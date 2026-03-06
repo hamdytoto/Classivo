@@ -13,7 +13,7 @@
 
 ## 1) Project Setup
 - [x] Bootstrap module folders under `src/modules/*` -> created base domain folders under `src/modules`
-- [ ] Create `common` primitives (guards, decorators, filters, interceptors)
+- [x] Create `common` primitives (guards, decorators, filters, interceptors) -> see `src/common/decorators`, `src/common/guards`, `src/common/filters`, `src/common/interceptors`
 - [ ] Set up Prisma schema + migrations folder
 - [ ] Add seed strategy (roles, permissions, default admin)
 - [ ] Add Redis config and connection manager
