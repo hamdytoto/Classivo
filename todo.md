@@ -12,7 +12,7 @@
 - [x] Add health check endpoint (`/health`) -> see `src/health/health.controller.ts`, `src/main.ts`, `docs/health.md`
 
 ## 1) Project Setup
-- [ ] Bootstrap module folders under `src/modules/*`
+- [x] Bootstrap module folders under `src/modules/*` -> created base domain folders under `src/modules`
 - [ ] Create `common` primitives (guards, decorators, filters, interceptors)
 - [ ] Set up Prisma schema + migrations folder
 - [ ] Add seed strategy (roles, permissions, default admin)

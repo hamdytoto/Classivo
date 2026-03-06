@@ -3,9 +3,10 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HealthController } from './health/health.controller';
 import { RequestContextMiddleware } from './common/middleware/request-context.middleware';
+import { FEATURE_MODULES } from './modules';
 
 @Module({
-  imports: [],
+  imports: [...FEATURE_MODULES],
   controllers: [AppController, HealthController],
   providers: [AppService],
 })

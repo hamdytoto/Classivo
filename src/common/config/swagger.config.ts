@@ -12,7 +12,7 @@ export function setupSwagger(app: INestApplication): void {
     .setTitle('Classivo API')
     .setDescription('Classivo backend API documentation')
     .setVersion('1.0.0')
-    .addServer(apiBasePath, 'Versioned API base path')
+    // .addServer(apiBasePath, 'Versioned API base path')
     .addBearerAuth()
     .build();
 
