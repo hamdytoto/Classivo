@@ -3,7 +3,7 @@
 Date approved: 2026-03-06
 
 ## Endpoint
-- Default docs UI path: `/docs`
+- Default docs UI path: `/docs`\n- API base path in docs: `/api/v1`
 - Configurable by env var: `SWAGGER_PATH`
 
 ## Setup Notes
