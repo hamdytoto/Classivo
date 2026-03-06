@@ -1,4 +1,4 @@
-﻿import { Test, TestingModule } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
 import { RolesController } from './roles.controller';
 import { RolesService } from './roles.service';
 
@@ -8,7 +8,25 @@ describe('RolesController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [RolesController],
-      providers: [RolesService],
+      providers: [
+        {
+          provide: RolesService,
+          useValue: {
+            createRole: jest.fn(),
+            findAllRoles: jest.fn(),
+            findOneRole: jest.fn(),
+            updateRole: jest.fn(),
+            createPermission: jest.fn(),
+            findAllPermissions: jest.fn(),
+            findOnePermission: jest.fn(),
+            updatePermission: jest.fn(),
+            assignPermissionToRole: jest.fn(),
+            removePermissionFromRole: jest.fn(),
+            assignRoleToUser: jest.fn(),
+            removeRoleFromUser: jest.fn(),
+          },
+        },
+      ],
     }).compile();
 
     controller = module.get<RolesController>(RolesController);
@@ -18,3 +36,4 @@ describe('RolesController', () => {
     expect(controller).toBeDefined();
   });
 });
+
