@@ -20,6 +20,7 @@ Define naming, lifecycle, and security rules for environment variables used by C
 
 ### Local development
 - `NODE_ENV`, `PORT`, `API_PREFIX`, `API_VERSION`
+- `SWAGGER_PATH` (optional, default: `docs`)
 - `DATABASE_URL`
 - `REDIS_URL`
 - `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `JWT_ACCESS_TTL`, `JWT_REFRESH_TTL`

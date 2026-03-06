@@ -6,7 +6,7 @@
 - [x] Finalize core stack: NestJS + Prisma + PostgreSQL + Redis + BullMQ + S3 -> see `docs/stack-decision.md`
 - [x] Create `.env.example` and environment variable policy -> see `.env.example` and `docs/env-policy.md`
 - [x] Enable global validation pipe and standardized error format -> see `src/main.ts` and `src/common/filters/global-exception.filter.ts`
-- [ ] Configure Swagger/OpenAPI and tag by module
+- [x] Configure Swagger/OpenAPI and tag by module -> see `src/main.ts`, `src/app.controller.ts`, `docs/swagger.md`
 - [ ] Add API versioning strategy (`/v1`)
 - [ ] Set up structured logging (request id, actor id, school id)
 - [ ] Add health check endpoint (`/health`)
