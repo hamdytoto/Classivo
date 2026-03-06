@@ -8,7 +8,7 @@
 - [x] Enable global validation pipe and standardized error format -> see `src/main.ts` and `src/common/filters/global-exception.filter.ts`
 - [x] Configure Swagger/OpenAPI and tag by module -> see `src/main.ts`, `src/app.controller.ts`, `docs/swagger.md`
 - [x] Add API versioning strategy (`/v1`) -> see `src/main.ts`, `src/common/config/versioning.config.ts`, `docs/api-versioning.md`
-- [ ] Set up structured logging (request id, actor id, school id)
+- [x] Set up structured logging (request id, actor id, school id) -> see `src/common/middleware/request-context.middleware.ts`, `src/common/interceptors/structured-logging.interceptor.ts`, `docs/structured-logging.md`
 - [ ] Add health check endpoint (`/health`)
 
 ## 1) Project Setup

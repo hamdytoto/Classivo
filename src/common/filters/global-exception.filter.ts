@@ -8,6 +8,7 @@ import {
 import { randomUUID } from 'node:crypto';
 import type { Request, Response } from 'express';
 import type { ApiErrorDetail, ApiErrorResponse } from '../types/api-error-response.type';
+import type { RequestContext } from '../types/request-context.type';
 
 type ErrorBody = {
   code?: string;
@@ -16,12 +17,16 @@ type ErrorBody = {
   error?: string;
 };
 
+type RequestWithContext = Request & {
+  context?: RequestContext;
+};
+
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
-    const request = ctx.getRequest<Request>();
+    const request = ctx.getRequest<RequestWithContext>();
 
     const isHttpException = exception instanceof HttpException;
     const status = isHttpException
@@ -29,7 +34,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const requestId =
-      this.getHeaderValue(request.headers['x-request-id']) ?? randomUUID();
+      request.context?.requestId ??
+      this.getHeaderValue(request.headers['x-request-id']) ??
+      randomUUID();
     const path = request.originalUrl ?? request.url ?? '/';
 
     const errorPayload = this.buildErrorPayload(exception, status);
