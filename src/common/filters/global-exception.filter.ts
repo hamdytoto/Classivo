@@ -7,7 +7,10 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import type { Request, Response } from 'express';
-import type { ApiErrorDetail, ApiErrorResponse } from '../types/api-error-response.type';
+import type {
+  ApiErrorDetail,
+  ApiErrorResponse,
+} from '../types/api-error-response.type';
 import type { RequestContext } from '../types/request-context.type';
 
 type ErrorBody = {
@@ -29,8 +32,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const request = ctx.getRequest<RequestWithContext>();
 
     const isHttpException = exception instanceof HttpException;
-    const status = isHttpException
-      ? exception.getStatus()
+    const status: HttpStatus = isHttpException
+      ? (exception.getStatus() as HttpStatus)
       : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const requestId =
@@ -55,7 +58,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
   private buildErrorPayload(
     exception: unknown,
-    status: number,
+    status: HttpStatus,
   ): ApiErrorResponse['error'] {
     if (exception instanceof HttpException) {
       const response = exception.getResponse();
@@ -71,7 +74,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
   private parseHttpExceptionResponse(
     response: string | object,
-    status: number,
+    status: HttpStatus,
   ): ApiErrorResponse['error'] {
     if (typeof response === 'string') {
       return {
@@ -90,7 +93,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     };
   }
 
-  private resolveMessage(body: ErrorBody, status: number): string {
+  private resolveMessage(body: ErrorBody, status: HttpStatus): string {
     if (Array.isArray(body.message)) {
       return body.message.join('; ');
     }
@@ -108,7 +111,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       : 'Request failed';
   }
 
-  private defaultCode(status: number): string {
+  private defaultCode(status: HttpStatus): string {
     if (status === HttpStatus.BAD_REQUEST) {
       return 'BAD_REQUEST';
     }

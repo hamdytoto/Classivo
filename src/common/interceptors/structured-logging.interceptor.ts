@@ -32,7 +32,8 @@ export class StructuredLoggingInterceptor implements NestInterceptor {
     const response = http.getResponse<Response>();
 
     const requestId = request.context?.requestId ?? null;
-    const schoolId = request.user?.schoolId ?? request.context?.schoolId ?? null;
+    const schoolId =
+      request.user?.schoolId ?? request.context?.schoolId ?? null;
     const actorId = this.extractActorId(request.user);
     const method = request.method;
     const path = request.originalUrl ?? request.url;

@@ -16,11 +16,11 @@
 - [x] Create `common` primitives (guards, decorators, filters, interceptors) -> see `src/common/decorators`, `src/common/guards`, `src/common/filters`, `src/common/interceptors`
 - [x] Set up Prisma schema + migrations folder -> see `prisma/schema.prisma` and `prisma/migrations/`
 - [x] Add seed strategy (roles, permissions, default admin) -> see `prisma/seed.js` and `docs/seed-strategy.md`
-- [ ] Add Redis config and connection manager
-- [ ] Add BullMQ base queue module
-- [ ] Add S3 client abstraction module
-- [ ] Add Dockerfile + docker-compose for local dev (api, postgres, redis)
-- [ ] Add CI checks (lint, test, build)
+- [x] Add Redis config and connection manager -> see `src/common/config/redis.config.ts` and `src/common/redis/*`
+- [x] Add BullMQ base queue module -> see `src/common/queue/*`
+- [x] Add S3 client abstraction module -> see `src/common/config/storage.config.ts` and `src/common/storage/*`
+- [x] Add Dockerfile + docker-compose for local dev (api, postgres, redis) -> see `Dockerfile` and `docker-compose.yml`
+- [x] Add CI checks (lint, test, build) -> see `.github/workflows/ci.yml` and `package.json`
 
 ## 2) Auth + Access (Sprint 1)
 - [ ] Implement `users` module (create/find/update/me)

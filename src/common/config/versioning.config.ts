@@ -7,7 +7,9 @@ export function normalizeApiVersion(rawVersion: string | undefined): string {
   const normalized = rawVersion.trim().toLowerCase();
   if (normalized.startsWith('v')) {
     const versionWithoutPrefix = normalized.slice(1);
-    return versionWithoutPrefix.length > 0 ? versionWithoutPrefix : fallbackVersion;
+    return versionWithoutPrefix.length > 0
+      ? versionWithoutPrefix
+      : fallbackVersion;
   }
 
   return normalized;
