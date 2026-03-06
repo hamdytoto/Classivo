@@ -14,7 +14,7 @@
 ## 1) Project Setup
 - [x] Bootstrap module folders under `src/modules/*` -> created base domain folders under `src/modules`
 - [x] Create `common` primitives (guards, decorators, filters, interceptors) -> see `src/common/decorators`, `src/common/guards`, `src/common/filters`, `src/common/interceptors`
-- [ ] Set up Prisma schema + migrations folder
+- [x] Set up Prisma schema + migrations folder -> see `prisma/schema.prisma` and `prisma/migrations/`
 - [ ] Add seed strategy (roles, permissions, default admin)
 - [ ] Add Redis config and connection manager
 - [ ] Add BullMQ base queue module
