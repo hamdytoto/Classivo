@@ -24,7 +24,7 @@
 
 ## 2) Auth + Access (Sprint 1)
 - [x] Implement `users` module (create/find/update/me) -> see `src/modules/users/*`, `src/common/prisma/*`, `docs/sprint-1/bullet-1-users-module-plan.md`
-- [ ] Implement `roles` + `permissions` entities
+- [x] Implement `roles` + `permissions` entities -> see `src/modules/roles/*`, `docs/sprint-1/bullet-2-roles-permissions-plan.md`
 - [ ] Implement `auth/login` (email/phone + password)
 - [ ] Implement JWT access token issuance
 - [ ] Implement refresh token rotation/revocation
