@@ -5,7 +5,6 @@ import { GlobalExceptionFilter } from './common/filters/global-exception.filter'
 import { setupSwagger } from './common/config/swagger.config';
 import { normalizeApiVersion } from './common/config/versioning.config';
 import { StructuredLoggingInterceptor } from './common/interceptors/structured-logging.interceptor';
-import { RequestContextMiddleware } from './common/middleware/request-context.middleware';
 import { createValidationPipe } from './common/pipes/validation.pipe';
 
 async function bootstrap() {
@@ -13,12 +12,11 @@ async function bootstrap() {
   const apiPrefix = process.env.API_PREFIX ?? 'api';
   const apiVersion = normalizeApiVersion(process.env.API_VERSION);
 
-  app.setGlobalPrefix(apiPrefix);
+  app.setGlobalPrefix(apiPrefix, { exclude: ['health'] });
   app.enableVersioning({
     type: VersioningType.URI,
     defaultVersion: apiVersion,
   });
-  app.use(RequestContextMiddleware);
   app.useGlobalPipes(createValidationPipe());
   app.useGlobalFilters(new GlobalExceptionFilter());
   app.useGlobalInterceptors(new StructuredLoggingInterceptor());

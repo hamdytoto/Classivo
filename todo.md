@@ -9,7 +9,7 @@
 - [x] Configure Swagger/OpenAPI and tag by module -> see `src/main.ts`, `src/app.controller.ts`, `docs/swagger.md`
 - [x] Add API versioning strategy (`/v1`) -> see `src/main.ts`, `src/common/config/versioning.config.ts`, `docs/api-versioning.md`
 - [x] Set up structured logging (request id, actor id, school id) -> see `src/common/middleware/request-context.middleware.ts`, `src/common/interceptors/structured-logging.interceptor.ts`, `docs/structured-logging.md`
-- [ ] Add health check endpoint (`/health`)
+- [x] Add health check endpoint (`/health`) -> see `src/health/health.controller.ts`, `src/main.ts`, `docs/health.md`
 
 ## 1) Project Setup
 - [ ] Bootstrap module folders under `src/modules/*`
