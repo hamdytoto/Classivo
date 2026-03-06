@@ -23,7 +23,7 @@
 - [x] Add CI checks (lint, test, build) -> see `.github/workflows/ci.yml` and `package.json`
 
 ## 2) Auth + Access (Sprint 1)
-- [ ] Implement `users` module (create/find/update/me)
+- [x] Implement `users` module (create/find/update/me) -> see `src/modules/users/*`, `src/common/prisma/*`, `docs/sprint-1/bullet-1-users-module-plan.md`
 - [ ] Implement `roles` + `permissions` entities
 - [ ] Implement `auth/login` (email/phone + password)
 - [ ] Implement JWT access token issuance

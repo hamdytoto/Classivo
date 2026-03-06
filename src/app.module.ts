@@ -7,9 +7,16 @@ import { FEATURE_MODULES } from './modules';
 import { RedisModule } from './common/redis/redis.module';
 import { QueueModule } from './common/queue/queue.module';
 import { StorageModule } from './common/storage/storage.module';
+import { PrismaModule } from './common/prisma/prisma.module';
 
 @Module({
-  imports: [RedisModule, QueueModule, StorageModule, ...FEATURE_MODULES],
+  imports: [
+    PrismaModule,
+    RedisModule,
+    QueueModule,
+    StorageModule,
+    ...FEATURE_MODULES,
+  ],
   controllers: [AppController, HealthController],
   providers: [AppService],
 })
