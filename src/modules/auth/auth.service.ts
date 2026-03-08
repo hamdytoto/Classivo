@@ -1,11 +1,14 @@
+import { randomUUID } from 'crypto';
 import {
   BadRequestException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { UserStatus } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { compareHash } from '../../common/security/hash.utils';
+import { getJwtAccessTokenConfig } from '../../common/security/jwt.utils';
 import { LoginDto } from './dto/login.dto';
 
 const AUTH_USER_SELECT = {
@@ -23,7 +26,10 @@ const AUTH_USER_SELECT = {
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwtService: JwtService,
+  ) {}
 
   getStatus(): string {
     return 'auth module is ready';
@@ -61,7 +67,26 @@ export class AuthService {
       select: AUTH_USER_SELECT,
     });
 
-    return { user: authenticatedUser };
+    const jwtAccessConfig = getJwtAccessTokenConfig();
+    const tokenPayload = {
+      sub: authenticatedUser.id,
+      schoolId: authenticatedUser.schoolId ?? null,
+      email: authenticatedUser.email ?? null,
+      phone: authenticatedUser.phone ?? null,
+      status: authenticatedUser.status,
+    };
+    const accessToken = await this.jwtService.signAsync(tokenPayload, {
+      secret: jwtAccessConfig.secret,
+      expiresIn: jwtAccessConfig.expiresInSeconds,
+      jwtid: randomUUID(),
+    });
+
+    return {
+      accessToken,
+      tokenType: 'Bearer',
+      expiresIn: jwtAccessConfig.expiresInSeconds,
+      user: authenticatedUser,
+    };
   }
 
   private ensureSingleIdentifier(email?: string, phone?: string): void {

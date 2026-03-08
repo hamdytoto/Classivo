@@ -26,7 +26,7 @@
 - [x] Implement `users` module (create/find/update/me) -> see `src/modules/users/*`, `src/common/prisma/*`, `docs/sprint-1/bullet-1-users-module-plan.md`
 - [x] Implement `roles` + `permissions` entities -> see `src/modules/roles/*`, `docs/sprint-1/bullet-2-roles-permissions-plan.md`
 - [x] Implement `auth/login` (email/phone + password) -> see `src/modules/auth/*`, `docs/sprint-1/bullet-3-auth-login-plan.md`
-- [ ] Implement JWT access token issuance
+- [x] Implement JWT access token issuance -> see `src/common/security/jwt.utils.ts`, `src/modules/auth/auth.service.ts`, `docs/sprint-1/bullet-4-jwt-access-token-plan.md`
 - [ ] Implement refresh token rotation/revocation
 - [ ] Implement logout endpoint with token invalidation
 - [ ] Implement role guard and permission guard
