@@ -2,7 +2,7 @@ import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
 import { IsEmail, IsOptional, IsString, Length, Matches } from 'class-validator';
 
 export class LoginDto {
-  @ApiPropertyOptional({ example: 'teacher@classivo.dev' })
+  @ApiPropertyOptional({ example: 'admin@classivo.local' })
   @IsOptional()
   @IsEmail()
   email?: string;
@@ -14,7 +14,7 @@ export class LoginDto {
   @Matches(/^\+?[0-9]+$/, { message: 'phone must contain only digits and +' })
   phone?: string;
 
-  @ApiProperty({ minLength: 8, maxLength: 72 })
+  @ApiProperty({ minLength: 8, maxLength: 72 ,example: 'ChangeMe123!' })
   @IsString()
   @Length(8, 72)
   password!: string;

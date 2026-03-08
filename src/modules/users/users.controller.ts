@@ -8,14 +8,15 @@ import {
   Query,
   Req,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import {
-  ApiHeader,
   ApiOperation,
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
 import type { Request } from 'express';
+import { JwtAuthGuard } from '../../common/guards';
 import type { AuthenticatedActor } from '../../common/types/request-context.type';
 import { CreateUserDto } from './dto/create-user.dto';
 import { FindUsersQueryDto } from './dto/find-users-query.dto';
@@ -27,6 +28,7 @@ type RequestWithActor = Request & {
 };
 
 @ApiTags('users')
+@UseGuards(JwtAuthGuard)
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -45,22 +47,15 @@ export class UsersController {
 
   @Get('me')
   @ApiOperation({ summary: 'Get current user profile' })
-  @ApiHeader({
-    name: 'x-user-id',
-    required: false,
-    description:
-      'Temporary fallback until auth is implemented. Prefer authenticated request.user.',
-  })
   me(@Req() request: RequestWithActor) {
     const actor = request.user;
-    const fallbackUserId = this.readHeader(request, 'x-user-id');
-    const userId = actor?.id ?? actor?.userId ?? actor?.sub ?? fallbackUserId;
+    const userId = actor?.id ?? actor?.userId ?? actor?.sub;
 
     if (!userId) {
       throw new UnauthorizedException({
         code: 'AUTH_REQUIRED',
         message:
-          'Authenticated user is required. Provide a valid access token or x-user-id for local testing.',
+          'Authenticated user is required. Provide a valid access token.',
       });
     }
 
@@ -79,19 +74,5 @@ export class UsersController {
   @ApiParam({ name: 'id', format: 'uuid' })
   update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
     return this.usersService.update(id, updateUserDto);
-  }
-
-  private readHeader(req: Request, key: string): string | null {
-    const value = req.headers[key.toLowerCase()];
-
-    if (typeof value === 'string' && value.length > 0) {
-      return value;
-    }
-
-    if (Array.isArray(value) && value[0]) {
-      return value[0];
-    }
-
-    return null;
   }
 }
