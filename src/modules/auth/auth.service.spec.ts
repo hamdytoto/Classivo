@@ -268,4 +268,78 @@ describe('AuthService', () => {
       },
     });
   });
+
+  it('should revoke the targeted session on logout', async () => {
+    (jwtServiceMock.verifyAsync as jest.Mock).mockResolvedValueOnce({
+      sub: 'user-123',
+      sid: 'session-123',
+      type: 'refresh',
+    });
+
+    (prismaMock.session.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: 'session-123',
+      userId: 'user-123',
+      refreshTokenHash: hashToken('refresh-token'),
+      expiresAt: new Date(Date.now() + 60_000),
+      revokedAt: null,
+    });
+
+    await expect(service.logout('refresh-token', 'user-123')).resolves.toBeUndefined();
+
+    expect(prismaMock.session.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'session-123',
+        revokedAt: null,
+      },
+      data: {
+        revokedAt: expect.any(Date),
+      },
+    });
+  });
+
+  it('should reject logout when access token subject does not own the session', async () => {
+    (jwtServiceMock.verifyAsync as jest.Mock).mockResolvedValueOnce({
+      sub: 'user-123',
+      sid: 'session-123',
+      type: 'refresh',
+    });
+
+    await expect(service.logout('refresh-token', 'user-456')).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+
+    expect(prismaMock.session.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('should reject refresh for a revoked session after logout', async () => {
+    (jwtServiceMock.verifyAsync as jest.Mock).mockResolvedValueOnce({
+      sub: 'user-123',
+      sid: 'session-123',
+      type: 'refresh',
+    });
+
+    (prismaMock.session.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: 'session-123',
+      userId: 'user-123',
+      refreshTokenHash: hashToken('refresh-token'),
+      expiresAt: new Date(Date.now() + 60_000),
+      revokedAt: new Date(),
+      user: {
+        id: 'user-123',
+        schoolId: null,
+        email: 'john@classivo.dev',
+        phone: null,
+        firstName: 'John',
+        lastName: 'Doe',
+        status: UserStatus.ACTIVE,
+        lastLoginAt: new Date('2026-03-08T00:00:00.000Z'),
+        createdAt: new Date('2026-03-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-03-08T00:00:00.000Z'),
+      },
+    });
+
+    await expect(service.refresh('refresh-token')).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+  });
 });

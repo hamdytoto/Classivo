@@ -1,13 +1,26 @@
-import { Body, Controller, Get, Post, Req } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Post,
+  Req,
+  UnauthorizedException,
+  UseGuards,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { Public } from '../../common/decorators';
+import { JwtAuthGuard } from '../../common/guards';
+import type { AuthenticatedActor } from '../../common/types/request-context.type';
 import { LoginDto } from './dto/login.dto';
+import { LogoutDto } from './dto/logout.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { AuthService } from './auth.service';
 
 type SessionRequest = Request & {
   ip?: string;
+  user?: AuthenticatedActor;
 };
 
 @ApiTags('auth')
@@ -37,6 +50,26 @@ export class AuthController {
       dto.refreshToken,
       this.extractSessionContext(request),
     );
+  }
+
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Logout and revoke the active refresh-token session' })
+  async logout(@Body() dto: LogoutDto, @Req() request: SessionRequest) {
+    const actor = request.user;
+    const actorId = actor?.id ?? actor?.userId ?? actor?.sub;
+
+    if (!actorId) {
+      throw new UnauthorizedException({
+        code: 'AUTH_REQUIRED',
+        message:
+          'Authenticated user is required. Provide a valid access token.',
+      });
+    }
+
+    await this.authService.logout(dto.refreshToken, actorId);
   }
 
   private extractSessionContext(request: SessionRequest) {

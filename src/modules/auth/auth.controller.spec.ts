@@ -1,4 +1,7 @@
+import { JwtService } from '@nestjs/jwt';
+import { Reflector } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
+import { JwtAuthGuard } from '../../common/guards';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 
@@ -9,6 +12,7 @@ describe('AuthController', () => {
     getStatus: jest.fn(),
     login: jest.fn(),
     refresh: jest.fn(),
+    logout: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -18,6 +22,20 @@ describe('AuthController', () => {
         {
           provide: AuthService,
           useValue: authServiceMock,
+        },
+        {
+          provide: JwtAuthGuard,
+          useValue: {
+            canActivate: jest.fn().mockResolvedValue(true),
+          },
+        },
+        {
+          provide: JwtService,
+          useValue: {},
+        },
+        {
+          provide: Reflector,
+          useValue: {},
         },
       ],
     }).compile();
@@ -74,5 +92,24 @@ describe('AuthController', () => {
     expect(result).toEqual({
       accessToken: 'new-access-token',
     });
+  });
+
+  it('should delegate logout to auth service', async () => {
+    (authServiceMock.logout as jest.Mock).mockResolvedValueOnce(undefined);
+
+    const result = await controller.logout(
+      {
+        refreshToken: 'refresh-token',
+      } as never,
+      {
+        user: { id: 'user-123' },
+      } as never,
+    );
+
+    expect(authServiceMock.logout).toHaveBeenCalledWith(
+      'refresh-token',
+      'user-123',
+    );
+    expect(result).toBeUndefined();
   });
 });

@@ -194,6 +194,53 @@ export class AuthService {
     };
   }
 
+  async logout(refreshToken: string, actorId?: string): Promise<void> {
+    const payload = await this.verifyRefreshToken(refreshToken);
+
+    if (actorId && actorId !== payload.sub) {
+      throw new UnauthorizedException({
+        code: 'SESSION_OWNERSHIP_MISMATCH',
+        message: 'Refresh token does not belong to the authenticated user',
+      });
+    }
+
+    const session = await this.prisma.session.findUnique({
+      where: { id: payload.sid },
+      select: {
+        id: true,
+        userId: true,
+        refreshTokenHash: true,
+        expiresAt: true,
+        revokedAt: true,
+      },
+    });
+
+    if (!session || session.userId !== payload.sub) {
+      throw new UnauthorizedException({
+        code: 'INVALID_REFRESH_TOKEN',
+        message: 'Refresh token is invalid',
+      });
+    }
+
+    if (session.refreshTokenHash !== hashToken(refreshToken)) {
+      await this.revokeSession(session.id);
+      throw new UnauthorizedException({
+        code: 'REFRESH_TOKEN_REUSED',
+        message: 'Refresh token reuse detected',
+      });
+    }
+
+    if (session.expiresAt.getTime() <= Date.now()) {
+      await this.revokeSession(session.id);
+      throw new UnauthorizedException({
+        code: 'REFRESH_TOKEN_EXPIRED',
+        message: 'Refresh token has expired',
+      });
+    }
+
+    await this.revokeSession(session.id);
+  }
+
   private ensureSingleIdentifier(email?: string, phone?: string): void {
     if (!email && !phone) {
       throw new BadRequestException({
