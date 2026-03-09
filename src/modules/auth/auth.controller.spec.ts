@@ -8,6 +8,7 @@ describe('AuthController', () => {
   const authServiceMock = {
     getStatus: jest.fn(),
     login: jest.fn(),
+    refresh: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -37,14 +38,41 @@ describe('AuthController', () => {
     const result = await controller.login({
       email: 'john@classivo.dev',
       password: 'Password123',
-    });
+    } as never, {
+      ip: '127.0.0.1',
+      get: jest.fn().mockReturnValue('jest'),
+    } as never);
 
     expect(authServiceMock.login).toHaveBeenCalledWith({
       email: 'john@classivo.dev',
       password: 'Password123',
+    }, {
+      ipAddress: '127.0.0.1',
+      userAgent: 'jest',
     });
     expect(result).toEqual({
       user: { id: 'b6513f67-fe56-4a84-a9ae-bff34d8ae370' },
+    });
+  });
+
+  it('should delegate refresh to auth service', async () => {
+    (authServiceMock.refresh as jest.Mock).mockResolvedValueOnce({
+      accessToken: 'new-access-token',
+    });
+
+    const result = await controller.refresh({
+      refreshToken: 'refresh-token',
+    }, {
+      ip: '127.0.0.1',
+      get: jest.fn().mockReturnValue('jest'),
+    } as never);
+
+    expect(authServiceMock.refresh).toHaveBeenCalledWith('refresh-token', {
+      ipAddress: '127.0.0.1',
+      userAgent: 'jest',
+    });
+    expect(result).toEqual({
+      accessToken: 'new-access-token',
     });
   });
 });

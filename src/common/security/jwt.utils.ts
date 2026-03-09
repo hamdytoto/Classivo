@@ -1,13 +1,41 @@
-export function getJwtAccessTokenConfig(): {
+import { createHash } from 'crypto';
+
+type JwtTokenConfig = {
   secret: string;
   expiresIn: string | number;
   expiresInSeconds: number;
-} {
-  const secret = process.env.JWT_ACCESS_SECRET?.trim();
-  const expiresIn = process.env.JWT_ACCESS_TTL ?? '15m';
+};
+
+export function getJwtAccessTokenConfig(): JwtTokenConfig {
+  return getJwtTokenConfig({
+    secretEnvKey: 'JWT_ACCESS_SECRET',
+    ttlEnvKey: 'JWT_ACCESS_TTL',
+    defaultTtl: '15m',
+  });
+}
+
+export function getJwtRefreshTokenConfig(): JwtTokenConfig {
+  return getJwtTokenConfig({
+    secretEnvKey: 'JWT_REFRESH_SECRET',
+    ttlEnvKey: 'JWT_REFRESH_TTL',
+    defaultTtl: '7d',
+  });
+}
+
+export function hashToken(value: string): string {
+  return createHash('sha256').update(value).digest('hex');
+}
+
+function getJwtTokenConfig(options: {
+  secretEnvKey: string;
+  ttlEnvKey: string;
+  defaultTtl: string;
+}): JwtTokenConfig {
+  const secret = process.env[options.secretEnvKey]?.trim();
+  const expiresIn = process.env[options.ttlEnvKey] ?? options.defaultTtl;
 
   if (!secret) {
-    throw new Error('JWT_ACCESS_SECRET is required');
+    throw new Error(`${options.secretEnvKey} is required`);
   }
 
   return {

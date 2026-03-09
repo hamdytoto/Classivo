@@ -27,7 +27,7 @@
 - [x] Implement `roles` + `permissions` entities -> see `src/modules/roles/*`, `docs/sprint-1/bullet-2-roles-permissions-plan.md`
 - [x] Implement `auth/login` (email/phone + password) -> see `src/modules/auth/*`, `docs/sprint-1/bullet-3-auth-login-plan.md`
 - [x] Implement JWT access token issuance -> see `src/common/security/jwt.utils.ts`, `src/modules/auth/auth.service.ts`, `docs/sprint-1/bullet-4-jwt-access-token-plan.md`
-- [ ] Implement refresh token rotation/revocation
+- [x] Implement refresh token rotation/revocation -> see `src/modules/auth/*`, `prisma/schema.prisma`, `docs/sprint-1/bullet-5-refresh-token-rotation-plan.md`
 - [ ] Implement logout endpoint with token invalidation
 - [ ] Implement role guard and permission guard
 - [ ] Add password hashing (argon2 or bcrypt)

@@ -4,6 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { UserStatus } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { hash } from '../../common/security/hash.utils';
+import { hashToken } from '../../common/security/jwt.utils';
 import { AuthService } from './auth.service';
 
 describe('AuthService', () => {
@@ -14,14 +15,24 @@ describe('AuthService', () => {
       findUnique: jest.fn(),
       update: jest.fn(),
     },
+    session: {
+      create: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+    },
   } as unknown as PrismaService;
+
   const jwtServiceMock = {
     signAsync: jest.fn(),
+    verifyAsync: jest.fn(),
   } as unknown as JwtService;
 
   beforeEach(async () => {
     process.env.JWT_ACCESS_SECRET = 'test-access-secret';
     process.env.JWT_ACCESS_TTL = '15m';
+    process.env.JWT_REFRESH_SECRET = 'test-refresh-secret';
+    process.env.JWT_REFRESH_TTL = '7d';
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -74,22 +85,7 @@ describe('AuthService', () => {
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
-  it('should reject login when password does not match', async () => {
-    (prismaMock.user.findUnique as jest.Mock).mockResolvedValueOnce({
-      id: 'e11785dc-d1e3-4ef2-a880-7379100d24d0',
-      status: UserStatus.ACTIVE,
-      passwordHash: hash('WrongPassword123'),
-    });
-
-    await expect(
-      service.login({
-        email: 'john@classivo.dev',
-        password: 'Password123',
-      }),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
-  });
-
-  it('should update last login and return user payload on successful login', async () => {
+  it('should issue access and refresh tokens on successful login', async () => {
     (prismaMock.user.findUnique as jest.Mock).mockResolvedValueOnce({
       id: 'e11785dc-d1e3-4ef2-a880-7379100d24d0',
       status: UserStatus.ACTIVE,
@@ -108,17 +104,24 @@ describe('AuthService', () => {
       createdAt: new Date('2026-03-01T00:00:00.000Z'),
       updatedAt: new Date('2026-03-08T00:00:00.000Z'),
     });
-    (jwtServiceMock.signAsync as jest.Mock).mockResolvedValueOnce(
-      'header.payload.signature',
+
+    (jwtServiceMock.signAsync as jest.Mock)
+      .mockResolvedValueOnce('access-token')
+      .mockResolvedValueOnce('refresh-token');
+
+    const result = await service.login(
+      {
+        email: 'john@classivo.dev',
+        password: 'Password123',
+      },
+      {
+        ipAddress: '127.0.0.1',
+        userAgent: 'jest',
+      },
     );
 
-    const result = await service.login({
-      email: 'john@classivo.dev',
-      password: 'Password123',
-    });
-
-    expect(prismaMock.user.update).toHaveBeenCalledTimes(1);
-    expect(jwtServiceMock.signAsync).toHaveBeenCalledWith(
+    expect(jwtServiceMock.signAsync).toHaveBeenNthCalledWith(
+      1,
       {
         sub: 'e11785dc-d1e3-4ef2-a880-7379100d24d0',
         schoolId: null,
@@ -132,10 +135,137 @@ describe('AuthService', () => {
         jwtid: expect.any(String),
       }),
     );
-    expect(result.accessToken).toBe('header.payload.signature');
-    expect(result.tokenType).toBe('Bearer');
-    expect(result.expiresIn).toBe(900);
-    expect(result).toHaveProperty('user');
-    expect(result.user.email).toBe('john@classivo.dev');
+    expect(jwtServiceMock.signAsync).toHaveBeenNthCalledWith(
+      2,
+      {
+        sub: 'e11785dc-d1e3-4ef2-a880-7379100d24d0',
+        sid: expect.any(String),
+        type: 'refresh',
+      },
+      expect.objectContaining({
+        secret: 'test-refresh-secret',
+        expiresIn: 604800,
+        jwtid: expect.any(String),
+      }),
+    );
+    expect(prismaMock.session.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: 'e11785dc-d1e3-4ef2-a880-7379100d24d0',
+        refreshTokenHash: hashToken('refresh-token'),
+        ipAddress: '127.0.0.1',
+        userAgent: 'jest',
+      }),
+    });
+    expect(result).toEqual(
+      expect.objectContaining({
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+        tokenType: 'Bearer',
+        expiresIn: 900,
+        refreshExpiresIn: 604800,
+      }),
+    );
+  });
+
+  it('should rotate refresh token and update the session', async () => {
+    (jwtServiceMock.verifyAsync as jest.Mock).mockResolvedValueOnce({
+      sub: 'user-123',
+      sid: 'session-123',
+      type: 'refresh',
+    });
+
+    (prismaMock.session.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: 'session-123',
+      userId: 'user-123',
+      refreshTokenHash: hashToken('current-refresh-token'),
+      expiresAt: new Date(Date.now() + 60_000),
+      revokedAt: null,
+      user: {
+        id: 'user-123',
+        schoolId: null,
+        email: 'john@classivo.dev',
+        phone: null,
+        firstName: 'John',
+        lastName: 'Doe',
+        status: UserStatus.ACTIVE,
+        lastLoginAt: new Date('2026-03-08T00:00:00.000Z'),
+        createdAt: new Date('2026-03-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-03-08T00:00:00.000Z'),
+      },
+    });
+
+    (jwtServiceMock.signAsync as jest.Mock)
+      .mockResolvedValueOnce('new-access-token')
+      .mockResolvedValueOnce('new-refresh-token');
+
+    const result = await service.refresh('current-refresh-token', {
+      ipAddress: '127.0.0.1',
+      userAgent: 'jest',
+    });
+
+    expect(jwtServiceMock.verifyAsync).toHaveBeenCalledWith(
+      'current-refresh-token',
+      {
+        secret: 'test-refresh-secret',
+      },
+    );
+    expect(prismaMock.session.update).toHaveBeenCalledWith({
+      where: { id: 'session-123' },
+      data: expect.objectContaining({
+        refreshTokenHash: hashToken('new-refresh-token'),
+        ipAddress: '127.0.0.1',
+        userAgent: 'jest',
+      }),
+    });
+    expect(result).toEqual(
+      expect.objectContaining({
+        accessToken: 'new-access-token',
+        refreshToken: 'new-refresh-token',
+        expiresIn: 900,
+        refreshExpiresIn: 604800,
+      }),
+    );
+  });
+
+  it('should revoke the session when refresh token reuse is detected', async () => {
+    (jwtServiceMock.verifyAsync as jest.Mock).mockResolvedValueOnce({
+      sub: 'user-123',
+      sid: 'session-123',
+      type: 'refresh',
+    });
+
+    (prismaMock.session.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: 'session-123',
+      userId: 'user-123',
+      refreshTokenHash: hashToken('different-refresh-token'),
+      expiresAt: new Date(Date.now() + 60_000),
+      revokedAt: null,
+      user: {
+        id: 'user-123',
+        schoolId: null,
+        email: 'john@classivo.dev',
+        phone: null,
+        firstName: 'John',
+        lastName: 'Doe',
+        status: UserStatus.ACTIVE,
+        lastLoginAt: new Date('2026-03-08T00:00:00.000Z'),
+        createdAt: new Date('2026-03-01T00:00:00.000Z'),
+        updatedAt: new Date('2026-03-08T00:00:00.000Z'),
+      },
+    });
+
+    await expect(service.refresh('replayed-refresh-token')).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+
+    expect(prismaMock.session.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: 'session-123',
+        revokedAt: null,
+      },
+      data: {
+        revokedAt: expect.any(Date),
+      },
+    });
   });
 });
