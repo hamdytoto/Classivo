@@ -1,67 +1,18 @@
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
+const {
+  BASELINE_ROLES,
+  PERMISSIONS,
+  ROLE_PERMISSIONS,
+} = require('./seed-data');
 
 const prisma = new PrismaClient();
-
-const ROLES = [
-  { code: 'SUPER_ADMIN', name: 'Super Admin' },
-  { code: 'SCHOOL_ADMIN', name: 'School Admin' },
-  { code: 'TEACHER', name: 'Teacher' },
-  { code: 'STUDENT', name: 'Student' },
-  { code: 'PARENT', name: 'Parent' },
-  { code: 'SUPPORT', name: 'Support' },
-];
-
-const PERMISSIONS = [
-  { code: 'users.read', name: 'Read users' },
-  { code: 'users.manage', name: 'Manage users' },
-  { code: 'schools.read', name: 'Read schools' },
-  { code: 'schools.manage', name: 'Manage schools' },
-  { code: 'classes.read', name: 'Read classes' },
-  { code: 'classes.manage', name: 'Manage classes' },
-  { code: 'courses.read', name: 'Read courses' },
-  { code: 'courses.manage', name: 'Manage courses' },
-  { code: 'lessons.manage', name: 'Manage lessons' },
-  { code: 'assignments.manage', name: 'Manage assignments' },
-  { code: 'submissions.read', name: 'Read submissions' },
-  { code: 'grades.manage', name: 'Manage grades' },
-  { code: 'attendance.manage', name: 'Manage attendance' },
-  { code: 'announcements.manage', name: 'Manage announcements' },
-];
-
-const ROLE_PERMISSIONS = {
-  SUPER_ADMIN: PERMISSIONS.map((permission) => permission.code),
-  SCHOOL_ADMIN: [
-    'users.read',
-    'users.manage',
-    'schools.read',
-    'schools.manage',
-    'classes.read',
-    'classes.manage',
-    'courses.read',
-    'courses.manage',
-    'attendance.manage',
-    'announcements.manage',
-  ],
-  TEACHER: [
-    'courses.read',
-    'lessons.manage',
-    'assignments.manage',
-    'submissions.read',
-    'grades.manage',
-    'attendance.manage',
-    'announcements.manage',
-  ],
-  STUDENT: ['courses.read', 'submissions.read'],
-  PARENT: ['courses.read'],
-  SUPPORT: ['users.read', 'schools.read', 'courses.read'],
-};
 
 async function upsertRolesAndPermissions() {
   const roleByCode = new Map();
   const permissionByCode = new Map();
 
-  for (const role of ROLES) {
+  for (const role of BASELINE_ROLES) {
     const upserted = await prisma.role.upsert({
       where: { code: role.code },
       update: { name: role.name },
@@ -110,7 +61,7 @@ async function upsertDefaultAdmin(roleByCode) {
   const adminEmail =
     process.env.DEFAULT_ADMIN_EMAIL?.trim().toLowerCase() ??
     'admin@classivo.local';
-const adminPassword =
+  const adminPassword =
     process.env.DEFAULT_ADMIN_PASSWORD?.trim() ?? 'ChangeMe123!';
   const firstName = process.env.DEFAULT_ADMIN_FIRST_NAME?.trim() ?? 'System';
   const lastName = process.env.DEFAULT_ADMIN_LAST_NAME?.trim() ?? 'Admin';
@@ -162,6 +113,9 @@ async function main() {
 
   console.log('Seed completed successfully.');
   console.log(`Default admin email: ${admin.email}`);
+  console.log(
+    `Baseline roles seeded: ${BASELINE_ROLES.map((role) => role.code).join(', ')}`,
+  );
 }
 
 main()

@@ -26,6 +26,7 @@ Provide repeatable bootstrap data for local/staging environments.
 - `DEFAULT_ADMIN_PASSWORD`
 - `DEFAULT_ADMIN_FIRST_NAME`
 - `DEFAULT_ADMIN_LAST_NAME`
+- `SALT_ROUND`
 
 ## Idempotency
 - Seed uses Prisma `upsert` for roles, permissions, role-permission links, admin user, and admin role assignment.
@@ -37,3 +38,4 @@ Provide repeatable bootstrap data for local/staging environments.
 
 ## Security Note
 - Change `DEFAULT_ADMIN_PASSWORD` immediately outside local development.
+- Keep `SALT_ROUND` aligned across app runtime and seed execution.

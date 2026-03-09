@@ -32,7 +32,7 @@
 - [x] Implement role guard and permission guard -> see `src/common/guards/*`, `src/common/decorators/*`, `docs/sprint-1/bullet-7-role-permission-guards-plan.md`
 - [x] Add password hashing (argon2 or bcrypt) -> see `src/common/security/hash.utils.ts`, `src/modules/users/users.service.ts`, `src/modules/auth/auth.service.ts`, `docs/sprint-1/bullet-8-password-hashing-plan.md`
 - [x] Add auth rate limiting -> see `src/common/config/rate-limit.config.ts`, `src/common/guards/auth-rate-limit.guard.ts`, `src/modules/auth/auth.controller.ts`, `docs/sprint-1/bullet-9-auth-rate-limiting-plan.md`
-- [ ] Seed baseline roles: SuperAdmin, SchoolAdmin, Teacher, Student, Parent, Support
+- [x] Seed baseline roles: SuperAdmin, SchoolAdmin, Teacher, Student, Parent, Support -> see `prisma/seed.js`, `prisma/seed-data.js`, `docs/sprint-1/bullet-10-baseline-roles-seed-plan.md`
 
 ## 3) Schools, Courses, Classes, Enrollments (Sprint 2)
 - [ ] Implement `schools` module
