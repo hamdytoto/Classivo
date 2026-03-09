@@ -110,12 +110,15 @@ async function upsertDefaultAdmin(roleByCode) {
   const adminEmail =
     process.env.DEFAULT_ADMIN_EMAIL?.trim().toLowerCase() ??
     'admin@classivo.local';
-  const adminPassword =
+const adminPassword =
     process.env.DEFAULT_ADMIN_PASSWORD?.trim() ?? 'ChangeMe123!';
   const firstName = process.env.DEFAULT_ADMIN_FIRST_NAME?.trim() ?? 'System';
   const lastName = process.env.DEFAULT_ADMIN_LAST_NAME?.trim() ?? 'Admin';
+  const saltRounds = Number(process.env.SALT_ROUND) > 0
+    ? Number(process.env.SALT_ROUND)
+    : 10;
 
-  const passwordHash = await bcrypt.hash(adminPassword, 12);
+  const passwordHash = await bcrypt.hash(adminPassword, saltRounds);
   const admin = await prisma.user.upsert({
     where: { email: adminEmail },
     update: {

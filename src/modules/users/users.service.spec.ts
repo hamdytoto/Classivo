@@ -1,5 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { compareHash } from '../../common/security/hash.utils';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { UsersService } from './users.service';
 
@@ -61,5 +62,39 @@ describe('UsersService', () => {
         password: 'Password123',
       }),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('should hash passwords before persisting a created user', async () => {
+    (prismaMock.school.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: 'school-123',
+    });
+    (prismaMock.user.create as jest.Mock).mockImplementationOnce(({ data }) =>
+      Promise.resolve({
+        id: 'user-123',
+        schoolId: data.schoolId,
+        email: data.email,
+        phone: data.phone,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        status: data.status ?? 'ACTIVE',
+        lastLoginAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }),
+    );
+
+    await service.create({
+      schoolId: 'school-123',
+      firstName: 'Jane',
+      lastName: 'Doe',
+      email: 'jane@classivo.dev',
+      password: 'Password123',
+    });
+
+    const createCall = (prismaMock.user.create as jest.Mock).mock.calls[0][0];
+    expect(createCall.data.passwordHash).not.toBe('Password123');
+    await expect(
+      compareHash('Password123', createCall.data.passwordHash),
+    ).resolves.toBe(true);
   });
 });

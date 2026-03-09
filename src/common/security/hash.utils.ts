@@ -1,9 +1,22 @@
-import bcryptjs from 'bcryptjs'
+import bcryptjs from 'bcryptjs';
 
-export const hash = (text: string, saltRound: number = Number(process.env.SALT_ROUND || 10)) =>
-    bcryptjs.hashSync(text, saltRound)
+const DEFAULT_SALT_ROUNDS = 10;
 
-export const compareHash = (text: string, hash: string) =>
-    bcryptjs.compareSync(text, hash)
+export function getSaltRounds(): number {
+  const configuredRounds = Number(process.env.SALT_ROUND);
 
+  if (Number.isInteger(configuredRounds) && configuredRounds > 0) {
+    return configuredRounds;
+  }
+
+  return DEFAULT_SALT_ROUNDS;
+}
+
+export function hash(text: string, saltRounds: number = getSaltRounds()) {
+  return bcryptjs.hash(text, saltRounds);
+}
+
+export function compareHash(text: string, hashedText: string) {
+  return bcryptjs.compare(text, hashedText);
+}
 

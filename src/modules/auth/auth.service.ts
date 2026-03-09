@@ -83,7 +83,7 @@ export class AuthService {
       },
     });
 
-    if (!user || !compareHash(dto.password, user.passwordHash)) {
+    if (!user || !(await compareHash(dto.password, user.passwordHash))) {
       throw new UnauthorizedException({
         code: 'INVALID_CREDENTIALS',
         message: 'Invalid login credentials',

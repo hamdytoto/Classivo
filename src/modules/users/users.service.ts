@@ -32,7 +32,7 @@ export class UsersService {
     this.ensureContactProvided(createUserDto.email, createUserDto.phone);
     await this.ensureSchoolExists(createUserDto.schoolId);
 
-    const passwordHash = await hash(createUserDto.password, 12);
+    const passwordHash = await hash(createUserDto.password);
 
     try {
       return await this.prisma.user.create({
@@ -133,7 +133,7 @@ export class UsersService {
     }
 
     if (updateUserDto.password !== undefined) {
-      data.passwordHash = hash(updateUserDto.password);
+      data.passwordHash = await hash(updateUserDto.password);
     }
 
     try {

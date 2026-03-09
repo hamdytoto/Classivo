@@ -89,7 +89,7 @@ describe('AuthService', () => {
     (prismaMock.user.findUnique as jest.Mock).mockResolvedValueOnce({
       id: 'e11785dc-d1e3-4ef2-a880-7379100d24d0',
       status: UserStatus.ACTIVE,
-      passwordHash: hash('Password123'),
+      passwordHash: await hash('Password123'),
     });
 
     (prismaMock.user.update as jest.Mock).mockResolvedValueOnce({
