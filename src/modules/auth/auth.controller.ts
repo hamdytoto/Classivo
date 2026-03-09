@@ -11,7 +11,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { Public } from '../../common/decorators';
-import { JwtAuthGuard } from '../../common/guards';
+import { AuthRateLimitGuard, JwtAuthGuard } from '../../common/guards';
 import type { AuthenticatedActor } from '../../common/types/request-context.type';
 import { LoginDto } from './dto/login.dto';
 import { LogoutDto } from './dto/logout.dto';
@@ -37,6 +37,7 @@ export class AuthController {
 
   @Post('login')
   @Public()
+  @UseGuards(AuthRateLimitGuard)
   @ApiOperation({ summary: 'Login with email or phone plus password' })
   login(@Body() dto: LoginDto, @Req() request: SessionRequest) {
     return this.authService.login(dto, this.extractSessionContext(request));
@@ -44,6 +45,7 @@ export class AuthController {
 
   @Post('refresh')
   @Public()
+  @UseGuards(AuthRateLimitGuard)
   @ApiOperation({ summary: 'Rotate refresh token and issue a new token pair' })
   refresh(@Body() dto: RefreshTokenDto, @Req() request: SessionRequest) {
     return this.authService.refresh(
@@ -53,7 +55,7 @@ export class AuthController {
   }
 
   @Post('logout')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, AuthRateLimitGuard)
   @ApiBearerAuth()
   @HttpCode(204)
   @ApiOperation({ summary: 'Logout and revoke the active refresh-token session' })

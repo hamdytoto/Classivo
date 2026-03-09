@@ -1,7 +1,7 @@
 import { JwtService } from '@nestjs/jwt';
 import { Reflector } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
-import { JwtAuthGuard } from '../../common/guards';
+import { AuthRateLimitGuard, JwtAuthGuard } from '../../common/guards';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 
@@ -27,6 +27,12 @@ describe('AuthController', () => {
           provide: JwtAuthGuard,
           useValue: {
             canActivate: jest.fn().mockResolvedValue(true),
+          },
+        },
+        {
+          provide: AuthRateLimitGuard,
+          useValue: {
+            canActivate: jest.fn().mockReturnValue(true),
           },
         },
         {
