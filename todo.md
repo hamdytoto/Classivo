@@ -29,7 +29,7 @@
 - [x] Implement JWT access token issuance -> see `src/common/security/jwt.utils.ts`, `src/modules/auth/auth.service.ts`, `docs/sprint-1/bullet-4-jwt-access-token-plan.md`
 - [x] Implement refresh token rotation/revocation -> see `src/modules/auth/*`, `prisma/schema.prisma`, `docs/sprint-1/bullet-5-refresh-token-rotation-plan.md`
 - [x] Implement logout endpoint with token invalidation -> see `src/modules/auth/*`, `docs/sprint-1/bullet-6-logout-token-invalidation-plan.md`
-- [ ] Implement role guard and permission guard
+- [x] Implement role guard and permission guard -> see `src/common/guards/*`, `src/common/decorators/*`, `docs/sprint-1/bullet-7-role-permission-guards-plan.md`
 - [ ] Add password hashing (argon2 or bcrypt)
 - [ ] Add auth rate limiting
 - [ ] Seed baseline roles: SuperAdmin, SchoolAdmin, Teacher, Student, Parent, Support

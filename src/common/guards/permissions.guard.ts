@@ -1,21 +1,28 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { IS_PUBLIC_KEY, PERMISSIONS_KEY } from '../constants/auth.constants';
-
-type UserShape = {
-  permissions?: string[];
-};
+import { PrismaService } from '../prisma/prisma.service';
+import type { AuthenticatedActor } from '../types/request-context.type';
 
 type RequestWithUser = Request & {
-  user?: UserShape;
+  user?: AuthenticatedActor;
 };
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector) {}
+  constructor(
+    private readonly reflector: Reflector,
+    private readonly prisma: PrismaService,
+  ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -36,10 +43,60 @@ export class PermissionsGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<RequestWithUser>();
-    const userPermissions = request.user?.permissions ?? [];
+    const actor = request.user;
+    const actorId = actor?.id ?? actor?.userId ?? actor?.sub;
 
-    return requiredPermissions.every((permission) =>
+    if (!actorId) {
+      throw new UnauthorizedException({
+        code: 'AUTH_REQUIRED',
+        message:
+          'Authenticated user is required for permission-protected routes',
+      });
+    }
+
+    const assignments = await this.prisma.userRole.findMany({
+      where: { userId: actorId },
+      select: {
+        role: {
+          select: {
+            permissions: {
+              select: {
+                permission: {
+                  select: {
+                    code: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const userPermissions = [
+      ...new Set(
+        assignments.flatMap((assignment) =>
+          assignment.role.permissions.map((entry) => entry.permission.code),
+        ),
+      ),
+    ];
+
+    request.user = {
+      ...actor,
+      permissions: userPermissions,
+    };
+
+    const hasRequiredPermissions = requiredPermissions.every((permission) =>
       userPermissions.includes(permission),
     );
+
+    if (!hasRequiredPermissions) {
+      throw new ForbiddenException({
+        code: 'INSUFFICIENT_PERMISSIONS',
+        message: 'You do not have the required permissions for this resource',
+      });
+    }
+
+    return true;
   }
 }
