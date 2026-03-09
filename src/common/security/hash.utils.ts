@@ -19,4 +19,3 @@ export function hash(text: string, saltRounds: number = getSaltRounds()) {
 export function compareHash(text: string, hashedText: string) {
   return bcryptjs.compare(text, hashedText);
 }
-

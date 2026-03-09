@@ -6,12 +6,13 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ["**/*"],
+    ignores: ['dist/**', 'coverage/**', 'node_modules/**'],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   eslintPluginPrettierRecommended,
   {
+    files: ['**/*.ts'],
     languageOptions: {
       globals: {
         ...globals.node,

@@ -8,13 +8,15 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PermissionsGuard } from './permissions.guard';
 
 describe('PermissionsGuard', () => {
+  const getAllAndOverrideMock = jest.fn();
   const reflectorMock = {
-    getAllAndOverride: jest.fn(),
+    getAllAndOverride: getAllAndOverrideMock,
   } as unknown as Reflector;
 
+  const findManyMock = jest.fn();
   const prismaMock = {
     userRole: {
-      findMany: jest.fn(),
+      findMany: findManyMock,
     },
   } as unknown as PrismaService;
 
@@ -26,16 +28,16 @@ describe('PermissionsGuard', () => {
   });
 
   it('should allow public routes', async () => {
-    (reflectorMock.getAllAndOverride as jest.Mock).mockReturnValueOnce(true);
+    getAllAndOverrideMock.mockReturnValueOnce(true);
 
     const context = createHttpExecutionContext({});
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
-    expect(prismaMock.userRole.findMany).not.toHaveBeenCalled();
+    expect(findManyMock).not.toHaveBeenCalled();
   });
 
   it('should reject missing authenticated actor', async () => {
-    (reflectorMock.getAllAndOverride as jest.Mock)
+    getAllAndOverrideMock
       .mockReturnValueOnce(false)
       .mockReturnValueOnce(['roles.read']);
 
@@ -47,10 +49,10 @@ describe('PermissionsGuard', () => {
   });
 
   it('should allow requests with all required permissions', async () => {
-    (reflectorMock.getAllAndOverride as jest.Mock)
+    getAllAndOverrideMock
       .mockReturnValueOnce(false)
       .mockReturnValueOnce(['roles.read', 'users.read']);
-    (prismaMock.userRole.findMany as jest.Mock).mockResolvedValueOnce([
+    findManyMock.mockResolvedValueOnce([
       {
         role: {
           permissions: [
@@ -82,10 +84,10 @@ describe('PermissionsGuard', () => {
   });
 
   it('should reject requests without all required permissions', async () => {
-    (reflectorMock.getAllAndOverride as jest.Mock)
+    getAllAndOverrideMock
       .mockReturnValueOnce(false)
       .mockReturnValueOnce(['roles.read', 'users.write']);
-    (prismaMock.userRole.findMany as jest.Mock).mockResolvedValueOnce([
+    findManyMock.mockResolvedValueOnce([
       {
         role: {
           permissions: [{ permission: { code: 'roles.read' } }],

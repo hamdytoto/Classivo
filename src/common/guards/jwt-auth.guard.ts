@@ -53,9 +53,12 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     try {
-      const payload = await this.jwtService.verifyAsync<JwtAccessPayload>(token, {
-        secret: getJwtAccessTokenConfig().secret,
-      });
+      const payload = await this.jwtService.verifyAsync<JwtAccessPayload>(
+        token,
+        {
+          secret: getJwtAccessTokenConfig().secret,
+        },
+      );
 
       request.user = {
         id: payload.sub,
@@ -101,10 +104,7 @@ export class JwtAuthGuard implements CanActivate {
       return error;
     }
 
-    if (
-      error instanceof Error &&
-      error.name === 'TokenExpiredError'
-    ) {
+    if (error instanceof Error && error.name === 'TokenExpiredError') {
       return new UnauthorizedException({
         code: 'ACCESS_TOKEN_EXPIRED',
         message: 'Access token has expired',

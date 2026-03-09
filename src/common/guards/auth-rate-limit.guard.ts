@@ -39,10 +39,13 @@ export class AuthRateLimitGuard implements CanActivate {
     }
 
     if (entry.count >= config.maxRequests) {
-      throw new HttpException({
-        code: 'AUTH_RATE_LIMIT_EXCEEDED',
-        message: 'Too many authentication requests. Please try again later.',
-      }, HttpStatus.TOO_MANY_REQUESTS);
+      throw new HttpException(
+        {
+          code: 'AUTH_RATE_LIMIT_EXCEEDED',
+          message: 'Too many authentication requests. Please try again later.',
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
     }
 
     entry.count += 1;
@@ -52,11 +55,14 @@ export class AuthRateLimitGuard implements CanActivate {
 
   private resolveRouteKey(request: Request): string {
     const method = request.method ?? 'UNKNOWN';
+    const routeRecord =
+      typeof request.route === 'object' && request.route !== null
+        ? (request.route as Record<string, unknown>)
+        : undefined;
+    const routePath =
+      typeof routeRecord?.path === 'string' ? routeRecord.path : undefined;
     const path =
-      request.route?.path ??
-      request.originalUrl ??
-      request.url ??
-      'unknown-route';
+      routePath ?? request.originalUrl ?? request.url ?? 'unknown-route';
 
     return `${method}:${path}`;
   }

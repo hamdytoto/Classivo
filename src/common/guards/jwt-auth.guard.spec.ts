@@ -5,12 +5,14 @@ import type { ExecutionContext } from '@nestjs/common';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 describe('JwtAuthGuard', () => {
+  const verifyAsyncMock = jest.fn();
   const jwtServiceMock = {
-    verifyAsync: jest.fn(),
+    verifyAsync: verifyAsyncMock,
   } as unknown as JwtService;
 
+  const getAllAndOverrideMock = jest.fn();
   const reflectorMock = {
-    getAllAndOverride: jest.fn(),
+    getAllAndOverride: getAllAndOverrideMock,
   } as unknown as Reflector;
 
   let guard: JwtAuthGuard;
@@ -23,17 +25,17 @@ describe('JwtAuthGuard', () => {
   });
 
   it('should allow public routes without token verification', async () => {
-    (reflectorMock.getAllAndOverride as jest.Mock).mockReturnValueOnce(true);
+    getAllAndOverrideMock.mockReturnValueOnce(true);
 
     const context = createHttpExecutionContext({});
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
-    expect(jwtServiceMock.verifyAsync).not.toHaveBeenCalled();
+    expect(verifyAsyncMock).not.toHaveBeenCalled();
   });
 
   it('should attach the verified actor to request.user', async () => {
-    (reflectorMock.getAllAndOverride as jest.Mock).mockReturnValueOnce(false);
-    (jwtServiceMock.verifyAsync as jest.Mock).mockResolvedValueOnce({
+    getAllAndOverrideMock.mockReturnValueOnce(false);
+    verifyAsyncMock.mockResolvedValueOnce({
       sub: 'user-123',
       schoolId: 'school-123',
       email: 'john@classivo.dev',
@@ -63,7 +65,7 @@ describe('JwtAuthGuard', () => {
     const context = createHttpExecutionContext(request);
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
-    expect(jwtServiceMock.verifyAsync).toHaveBeenCalledWith('valid-token', {
+    expect(verifyAsyncMock).toHaveBeenCalledWith('valid-token', {
       secret: 'test-access-secret',
     });
     expect(request.user).toEqual({
@@ -80,7 +82,7 @@ describe('JwtAuthGuard', () => {
   });
 
   it('should reject requests without a bearer token', async () => {
-    (reflectorMock.getAllAndOverride as jest.Mock).mockReturnValueOnce(false);
+    getAllAndOverrideMock.mockReturnValueOnce(false);
 
     const context = createHttpExecutionContext({
       headers: {},
@@ -92,10 +94,8 @@ describe('JwtAuthGuard', () => {
   });
 
   it('should reject invalid tokens', async () => {
-    (reflectorMock.getAllAndOverride as jest.Mock).mockReturnValueOnce(false);
-    (jwtServiceMock.verifyAsync as jest.Mock).mockRejectedValueOnce(
-      new Error('invalid token'),
-    );
+    getAllAndOverrideMock.mockReturnValueOnce(false);
+    verifyAsyncMock.mockRejectedValueOnce(new Error('invalid token'));
 
     const context = createHttpExecutionContext({
       headers: {

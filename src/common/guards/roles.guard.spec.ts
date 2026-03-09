@@ -8,13 +8,15 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RolesGuard } from './roles.guard';
 
 describe('RolesGuard', () => {
+  const getAllAndOverrideMock = jest.fn();
   const reflectorMock = {
-    getAllAndOverride: jest.fn(),
+    getAllAndOverride: getAllAndOverrideMock,
   } as unknown as Reflector;
 
+  const findManyMock = jest.fn();
   const prismaMock = {
     userRole: {
-      findMany: jest.fn(),
+      findMany: findManyMock,
     },
   } as unknown as PrismaService;
 
@@ -26,16 +28,16 @@ describe('RolesGuard', () => {
   });
 
   it('should allow public routes', async () => {
-    (reflectorMock.getAllAndOverride as jest.Mock).mockReturnValueOnce(true);
+    getAllAndOverrideMock.mockReturnValueOnce(true);
 
     const context = createHttpExecutionContext({});
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
-    expect(prismaMock.userRole.findMany).not.toHaveBeenCalled();
+    expect(findManyMock).not.toHaveBeenCalled();
   });
 
   it('should reject missing authenticated actor', async () => {
-    (reflectorMock.getAllAndOverride as jest.Mock)
+    getAllAndOverrideMock
       .mockReturnValueOnce(false)
       .mockReturnValueOnce(['SUPER_ADMIN']);
 
@@ -47,10 +49,10 @@ describe('RolesGuard', () => {
   });
 
   it('should allow requests with a required role', async () => {
-    (reflectorMock.getAllAndOverride as jest.Mock)
+    getAllAndOverrideMock
       .mockReturnValueOnce(false)
       .mockReturnValueOnce(['SUPER_ADMIN']);
-    (prismaMock.userRole.findMany as jest.Mock).mockResolvedValueOnce([
+    findManyMock.mockResolvedValueOnce([
       {
         role: {
           code: 'SUPER_ADMIN',
@@ -74,10 +76,10 @@ describe('RolesGuard', () => {
   });
 
   it('should reject requests without a required role', async () => {
-    (reflectorMock.getAllAndOverride as jest.Mock)
+    getAllAndOverrideMock
       .mockReturnValueOnce(false)
       .mockReturnValueOnce(['SUPER_ADMIN']);
-    (prismaMock.userRole.findMany as jest.Mock).mockResolvedValueOnce([
+    findManyMock.mockResolvedValueOnce([
       {
         role: {
           code: 'TEACHER',
