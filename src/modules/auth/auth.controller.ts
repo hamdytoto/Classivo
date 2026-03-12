@@ -7,7 +7,6 @@ import {
   Param,
   Post,
   Req,
-  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -17,9 +16,11 @@ import { AuthRateLimitGuard, JwtAuthGuard } from '../../common/guards';
 import type { AuthenticatedActor } from '../../common/types/request-context.type';
 import { LoginDto } from './dto/login.dto';
 import { LogoutDto } from './dto/logout.dto';
+import { LogoutAllDto } from './dto/logout-all.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterSchoolDto } from './dto/register-school.dto';
 import { AuthService } from './auth.service';
+import { CurrentUserId } from 'src/common/decorators/current-user.decorator';
 
 type SessionRequest = Request & {
   ip?: string;
@@ -62,17 +63,7 @@ export class AuthController {
     summary:
       'Return the authenticated actor with current roles and permissions',
   })
-  me(@Req() request: SessionRequest) {
-    const actorId = this.extractActorId(request);
-
-    if (!actorId) {
-      throw new UnauthorizedException({
-        code: 'AUTH_REQUIRED',
-        message:
-          'Authenticated user is required. Provide a valid access token.',
-      });
-    }
-
+  me(@CurrentUserId() actorId: string) {
     return this.authService.me(actorId);
   }
 
@@ -82,17 +73,7 @@ export class AuthController {
   @ApiOperation({
     summary: 'List active refresh-token sessions for the authenticated user',
   })
-  sessions(@Req() request: SessionRequest) {
-    const actorId = this.extractActorId(request);
-
-    if (!actorId) {
-      throw new UnauthorizedException({
-        code: 'AUTH_REQUIRED',
-        message:
-          'Authenticated user is required. Provide a valid access token.',
-      });
-    }
-
+  sessions(@CurrentUserId() actorId: string) {
     return this.authService.sessions(actorId);
   }
 
@@ -105,17 +86,8 @@ export class AuthController {
   })
   async revokeSession(
     @Param('sessionId') sessionId: string,
-    @Req() request: SessionRequest,
+    @CurrentUserId() actorId: string,
   ) {
-    const actorId = this.extractActorId(request);
-    if (!actorId) {
-      throw new UnauthorizedException({
-        code: 'AUTH_REQUIRED',
-        message:
-          'Authenticated user is required. Provide a valid access token.',
-      });
-    }
-
     await this.authService.revokeSession(sessionId, actorId);
   }
 
@@ -137,18 +109,24 @@ export class AuthController {
   @ApiOperation({
     summary: 'Logout and revoke the active refresh-token session',
   })
-  async logout(@Body() dto: LogoutDto, @Req() request: SessionRequest) {
-    const actorId = this.extractActorId(request);
-
-    if (!actorId) {
-      throw new UnauthorizedException({
-        code: 'AUTH_REQUIRED',
-        message:
-          'Authenticated user is required. Provide a valid access token.',
-      });
-    }
-
+  async logout(@Body() dto: LogoutDto, @CurrentUserId() actorId: string) {
     await this.authService.logout(dto.refreshToken, actorId);
+  }
+
+  @Post('logout-all')
+  @UseGuards(JwtAuthGuard, AuthRateLimitGuard)
+  @ApiBearerAuth()
+  @HttpCode(200)
+  @ApiOperation({
+    summary:
+      'Logout and revoke all active sessions. Optionally exclude the current session.',
+  })
+  async logoutAll(@Body() dto: LogoutAllDto, @CurrentUserId() actorId: string) {
+    return this.authService.logoutAll(
+      dto.refreshToken,
+      dto.includeCurrent ?? false,
+      actorId,
+    );
   }
 
   private extractSessionContext(request: SessionRequest) {
@@ -156,10 +134,5 @@ export class AuthController {
       ipAddress: request.ip ?? null,
       userAgent: request.get?.('user-agent') ?? null,
     };
-  }
-
-  private extractActorId(request: SessionRequest) {
-    const actor = request.user;
-    return actor?.id ?? actor?.userId ?? actor?.sub;
   }
 }

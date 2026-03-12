@@ -15,6 +15,7 @@ describe('AuthController', () => {
   const registerSchoolMock = jest.fn();
   const refreshMock = jest.fn();
   const logoutMock = jest.fn();
+  const logoutAllMock = jest.fn();
   const authServiceMock = {
     login: loginMock,
     me: meMock,
@@ -23,6 +24,7 @@ describe('AuthController', () => {
     registerSchool: registerSchoolMock,
     refresh: refreshMock,
     logout: logoutMock,
+    logoutAll: logoutAllMock,
   };
 
   beforeEach(async () => {
@@ -221,5 +223,22 @@ describe('AuthController', () => {
 
     expect(logoutMock).toHaveBeenCalledWith('refresh-token', 'user-123');
     expect(result).toBeUndefined();
+  });
+
+  it('should delegate logout-all to auth service', async () => {
+    logoutAllMock.mockResolvedValueOnce({ revokedCount: 2 });
+
+    const result = await controller.logoutAll(
+      {
+        refreshToken: 'refresh-token',
+        includeCurrent: false,
+      } as never,
+      {
+        user: { id: 'user-123' },
+      } as never,
+    );
+
+    expect(logoutAllMock).toHaveBeenCalledWith('refresh-token', false, 'user-123');
+    expect(result).toEqual({ revokedCount: 2 });
   });
 });

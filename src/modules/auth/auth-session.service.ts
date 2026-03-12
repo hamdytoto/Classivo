@@ -106,6 +106,24 @@ export class AuthSessionService {
         });
     }
 
+    async revokeMultipleSessions(
+        userId: string,
+        excludeSessionId?: string,
+    ): Promise<number> {
+        const result = await this.prisma.session.updateMany({
+            where: {
+                userId,
+                revokedAt: null,
+                ...(excludeSessionId && { NOT: { id: excludeSessionId } }),
+            },
+            data: {
+                revokedAt: new Date(),
+            },
+        });
+
+        return result.count;
+    }
+
     assertRefreshTokenMatches(storedHash: string, refreshToken: string) {
         if (storedHash !== hashToken(refreshToken)) {
             throw new UnauthorizedException({

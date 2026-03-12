@@ -42,7 +42,7 @@ Sprint 1 should remain an identity-and-access sprint. Do not pull academic domai
 - [x] Add `GET /auth/me` to return the authenticated actor with roles and permissions resolved from the token/database -> see `src/modules/auth/*` and `docs/sprint-1/bullet-12-auth-me-plan.md`
 - [x] Add `GET /auth/sessions` to list active refresh-token sessions for the current user -> see `src/modules/auth/*` and `docs/sprint-1/bullet-13-auth-sessions-plan.md`
 - [x] Add `DELETE /auth/sessions/:sessionId` to revoke a specific session/device -> see `src/modules/auth/*` and `docs/sprint-1/bullet-14-auth-revoke-session-plan.md`
-- [ ] Add `POST /auth/logout-all` to revoke all active sessions except the current one, or all sessions if preferred
+- [x] Add `POST /auth/logout-all` to revoke all active sessions except the current one, or all sessions if preferred
 - [ ] Add `POST /auth/change-password` for authenticated password rotation
 - [ ] Add `POST /auth/forgot-password` to create a password-reset request placeholder or full flow
 - [ ] Add `POST /auth/reset-password` to complete password reset with a token

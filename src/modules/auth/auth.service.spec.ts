@@ -739,4 +739,102 @@ describe('AuthService', () => {
       UnauthorizedException,
     );
   });
+
+  it('should revoke all sessions except the current one when logoutAll is called with includeCurrent = false', async () => {
+    verifyAsyncMock.mockResolvedValueOnce({
+      sub: 'user-123',
+      sid: 'session-123',
+      type: 'refresh',
+    });
+
+    sessionFindUniqueMock.mockResolvedValueOnce({
+      id: 'session-123',
+      userId: 'user-123',
+      refreshTokenHash: hashToken('refresh-token'),
+      expiresAt: new Date(Date.now() + 60_000),
+      revokedAt: null,
+    });
+
+    const authSessionService = (service as any).authSessionService;
+    const revokeMultipleSpy = jest
+      .spyOn(authSessionService, 'revokeMultipleSessions')
+      .mockResolvedValueOnce(2);
+
+    const result = await service.logoutAll('refresh-token', false, 'user-123');
+
+    expect(revokeMultipleSpy).toHaveBeenCalledWith('user-123', 'session-123');
+    expect(result).toEqual({ revokedCount: 2 });
+    revokeMultipleSpy.mockRestore();
+  });
+
+  it('should revoke all sessions including the current one when logoutAll is called with includeCurrent = true', async () => {
+    verifyAsyncMock.mockResolvedValueOnce({
+      sub: 'user-123',
+      sid: 'session-123',
+      type: 'refresh',
+    });
+
+    sessionFindUniqueMock.mockResolvedValueOnce({
+      id: 'session-123',
+      userId: 'user-123',
+      refreshTokenHash: hashToken('refresh-token'),
+      expiresAt: new Date(Date.now() + 60_000),
+      revokedAt: null,
+    });
+
+    const authSessionService = (service as any).authSessionService;
+    const revokeMultipleSpy = jest
+      .spyOn(authSessionService, 'revokeMultipleSessions')
+      .mockResolvedValueOnce(3);
+
+    const result = await service.logoutAll('refresh-token', true, 'user-123');
+
+    expect(revokeMultipleSpy).toHaveBeenCalledWith('user-123', undefined);
+    expect(result).toEqual({ revokedCount: 3 });
+    revokeMultipleSpy.mockRestore();
+  });
+
+  it('should reject logoutAll when access token subject does not own the session', async () => {
+    verifyAsyncMock.mockResolvedValueOnce({
+      sub: 'user-123',
+      sid: 'session-123',
+      type: 'refresh',
+    });
+
+    await expect(
+      service.logoutAll('refresh-token', false, 'user-456'),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(sessionFindUniqueMock).not.toHaveBeenCalled();
+  });
+
+  it('should handle logoutAll with no sessions to revoke', async () => {
+    verifyAsyncMock.mockResolvedValueOnce({
+      sub: 'user-123',
+      sid: 'session-123',
+      type: 'refresh',
+    });
+
+    sessionFindUniqueMock.mockResolvedValueOnce({
+      id: 'session-123',
+      userId: 'user-123',
+      refreshTokenHash: hashToken('refresh-token'),
+      expiresAt: new Date(Date.now() + 60_000),
+      revokedAt: null,
+    });
+
+    const authSessionService = (service as any).authSessionService;
+    const revokeMultipleSpy = jest
+      .spyOn(authSessionService, 'revokeMultipleSessions')
+      .mockResolvedValueOnce(0);
+
+    const result = await service.logoutAll(
+      'refresh-token',
+      false,
+      'user-123',
+    );
+
+    expect(result).toEqual({ revokedCount: 0 });
+    revokeMultipleSpy.mockRestore();
+  });
 });

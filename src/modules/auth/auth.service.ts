@@ -123,8 +123,7 @@ export class AuthService {
     return this.authSessionService.listActiveSessions(actorId);
   }
 
-  async revokeSession(sessionId: string, actorId: string): Promise<any> {
-    console.log("testing is working ");
+  async revokeSession(sessionId: string, actorId: string): Promise<void> {
     const session = await this.authSessionService.findSession(sessionId);
     if (!session || session.userId !== actorId) {
       throw new NotFoundException({
@@ -134,13 +133,10 @@ export class AuthService {
     }
 
     if (session.revokedAt) {
-      return {
-        code: 'SESSION_ALREADY_REVOKED',
-        message: 'Session has already been revoked',
-      };
+      return;
     }
 
-   return await this.authSessionService.revokeSession(session.id);
+    await this.authSessionService.revokeSession(session.id);
   }
 
   async registerSchool(
@@ -339,6 +335,63 @@ export class AuthService {
     }
 
     await this.authSessionService.revokeSession(session.id);
+  }
+
+  async logoutAll(
+    refreshToken: string,
+    includeCurrent: boolean,
+    actorId?: string,
+  ): Promise<{ revokedCount: number }> {
+    const payload = await this.authTokenService.verifyRefreshToken(refreshToken);
+
+    if (actorId && actorId !== payload.sub) {
+      throw new UnauthorizedException({
+        code: 'SESSION_OWNERSHIP_MISMATCH',
+        message: 'Refresh token does not belong to the authenticated user',
+      });
+    }
+
+    const session = await this.prisma.session.findUnique({
+      where: { id: payload.sid },
+      select: {
+        id: true,
+        userId: true,
+        refreshTokenHash: true,
+        expiresAt: true,
+        revokedAt: true,
+      },
+    });
+
+    if (!session || session.userId !== payload.sub) {
+      throw new UnauthorizedException({
+        code: 'INVALID_REFRESH_TOKEN',
+        message: 'Refresh token is invalid',
+      });
+    }
+
+    if (session.refreshTokenHash !== hashToken(refreshToken)) {
+      await this.authSessionService.revokeSession(session.id);
+      throw new UnauthorizedException({
+        code: 'REFRESH_TOKEN_REUSED',
+        message: 'Refresh token reuse detected',
+      });
+    }
+
+    if (session.expiresAt.getTime() <= Date.now()) {
+      await this.authSessionService.revokeSession(session.id);
+      throw new UnauthorizedException({
+        code: 'REFRESH_TOKEN_EXPIRED',
+        message: 'Refresh token has expired',
+      });
+    }
+
+    const excludeSessionId = includeCurrent ? undefined : session.id;
+    const revokedCount = await this.authSessionService.revokeMultipleSessions(
+      session.userId,
+      excludeSessionId,
+    );
+
+    return { revokedCount };
   }
 
   private ensureSingleIdentifier(email?: string, phone?: string): void {
