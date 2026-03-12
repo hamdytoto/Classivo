@@ -8,7 +8,7 @@ export function ExactlyOneOf(
   properties: string[],
   validationOptions?: ValidationOptions,
 ) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       name: 'exactlyOneOf',
       target: object.constructor,
