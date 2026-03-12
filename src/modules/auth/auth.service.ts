@@ -34,6 +34,16 @@ export class AuthService {
   ) { }
 
   async login(dto: LoginDto, sessionContext?: SessionContext) {
+    const hasEmail = Boolean(dto.email?.trim());
+    const hasPhone = Boolean(dto.phone?.trim());
+
+    if (hasEmail === hasPhone) {
+      throw new BadRequestException({
+        code: 'INVALID_LOGIN_IDENTIFIER',
+        message: 'Provide either email or phone, but not both',
+      });
+    }
+
     const user = await this.prisma.user.findUnique({
       where: dto.email ? { email: dto.email } : { phone: dto.phone },
       select: {
