@@ -10,6 +10,8 @@ import { getJwtAccessTokenConfig } from '../../common/security/jwt.utils';
 import { PrismaModule } from '../../common/prisma/prisma.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { AuthSessionService } from './auth-session.service';
+import { AuthTokenService } from './auth-token.service';
 
 @Module({
   imports: [
@@ -33,6 +35,8 @@ import { AuthService } from './auth.service';
     RolesGuard,
     PermissionsGuard,
     AuthRateLimitGuard,
+    AuthSessionService,
+    AuthTokenService,
   ],
   exports: [
     AuthService,

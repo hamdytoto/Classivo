@@ -27,14 +27,7 @@ type SessionRequest = Request & {
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
-
-  @Get('status')
-  @Public()
-  @ApiOperation({ summary: 'Auth module status endpoint' })
-  getStatus(): string {
-    return this.authService.getStatus();
-  }
+  constructor(private readonly authService: AuthService) { }
 
   @Post('login')
   @Public()
