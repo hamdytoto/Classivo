@@ -8,6 +8,7 @@ import { RedisModule } from './common/redis/redis.module';
 import { QueueModule } from './common/queue/queue.module';
 import { StorageModule } from './common/storage/storage.module';
 import { PrismaModule } from './common/prisma/prisma.module';
+import { MailModule } from './modules/mail/mail.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { PrismaModule } from './common/prisma/prisma.module';
     RedisModule,
     QueueModule,
     StorageModule,
+    MailModule,
     ...FEATURE_MODULES,
   ],
   controllers: [AppController, HealthController],
