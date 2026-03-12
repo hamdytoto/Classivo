@@ -53,6 +53,28 @@ export class AuthController {
     );
   }
 
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Return the authenticated actor with current roles and permissions',
+  })
+  me(@Req() request: SessionRequest) {
+    const actor = request.user;
+    const actorId = actor?.id ?? actor?.userId ?? actor?.sub;
+
+    if (!actorId) {
+      throw new UnauthorizedException({
+        code: 'AUTH_REQUIRED',
+        message:
+          'Authenticated user is required. Provide a valid access token.',
+      });
+    }
+
+    return this.authService.me(actorId);
+  }
+
   @Post('refresh')
   @Public()
   @UseGuards(AuthRateLimitGuard)
@@ -72,8 +94,7 @@ export class AuthController {
     summary: 'Logout and revoke the active refresh-token session',
   })
   async logout(@Body() dto: LogoutDto, @Req() request: SessionRequest) {
-    const actor = request.user;
-    const actorId = actor?.id ?? actor?.userId ?? actor?.sub;
+    const actorId = this.extractActorId(request);
 
     if (!actorId) {
       throw new UnauthorizedException({
@@ -91,5 +112,10 @@ export class AuthController {
       ipAddress: request.ip ?? null,
       userAgent: request.get?.('user-agent') ?? null,
     };
+  }
+
+  private extractActorId(request: SessionRequest) {
+    const actor = request.user;
+    return actor?.id ?? actor?.userId ?? actor?.sub;
   }
 }

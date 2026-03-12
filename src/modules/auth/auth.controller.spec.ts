@@ -8,14 +8,14 @@ import { AuthService } from './auth.service';
 describe('AuthController', () => {
   let controller: AuthController;
 
-  const getStatusMock = jest.fn();
   const loginMock = jest.fn();
+  const meMock = jest.fn();
   const registerSchoolMock = jest.fn();
   const refreshMock = jest.fn();
   const logoutMock = jest.fn();
   const authServiceMock = {
-    getStatus: getStatusMock,
     login: loginMock,
+    me: meMock,
     registerSchool: registerSchoolMock,
     refresh: refreshMock,
     logout: logoutMock,
@@ -153,6 +153,25 @@ describe('AuthController', () => {
     expect(result).toEqual({
       school: { id: 'school-123' },
       user: { id: 'user-123' },
+    });
+  });
+
+  it('should delegate auth/me to auth service', async () => {
+    meMock.mockResolvedValueOnce({
+      id: 'user-123',
+      roles: ['SCHOOL_ADMIN'],
+      permissions: ['users.read'],
+    });
+
+    const result = await controller.me({
+      user: { id: 'user-123' },
+    } as never);
+
+    expect(meMock).toHaveBeenCalledWith('user-123');
+    expect(result).toEqual({
+      id: 'user-123',
+      roles: ['SCHOOL_ADMIN'],
+      permissions: ['users.read'],
     });
   });
 

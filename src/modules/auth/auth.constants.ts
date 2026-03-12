@@ -11,6 +11,28 @@ export const AUTH_USER_SELECT = {
   updatedAt: true,
 } as const;
 
+export const AUTH_ME_SELECT = {
+  ...AUTH_USER_SELECT,
+  roles: {
+    select: {
+      role: {
+        select: {
+          code: true,
+          permissions: {
+            select: {
+              permission: {
+                select: {
+                  code: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
 export const SCHOOL_PUBLIC_SELECT = {
   id: true,
   name: true,

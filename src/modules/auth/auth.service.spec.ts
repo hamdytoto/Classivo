@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   InternalServerErrorException,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -10,7 +11,9 @@ import { Prisma, UserStatus } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { hash } from '../../common/security/hash.utils';
 import { hashToken } from '../../common/security/jwt.utils';
+import { AuthSessionService } from './auth-session.service';
 import { AuthService } from './auth.service';
+import { AuthTokenService } from './auth-token.service';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -75,6 +78,8 @@ describe('AuthService', () => {
           provide: JwtService,
           useValue: jwtServiceMock,
         },
+        AuthSessionService,
+        AuthTokenService,
       ],
     }).compile();
 
@@ -194,6 +199,73 @@ describe('AuthService', () => {
         expiresIn: 900,
         refreshExpiresIn: 604800,
       }),
+    );
+  });
+
+  it('should return the authenticated actor with resolved roles and permissions', async () => {
+    userFindUniqueMock.mockResolvedValueOnce({
+      id: 'user-123',
+      schoolId: 'school-123',
+      email: 'owner@classivo.dev',
+      phone: null,
+      firstName: 'John',
+      lastName: 'Doe',
+      status: UserStatus.ACTIVE,
+      lastLoginAt: new Date('2026-03-08T00:00:00.000Z'),
+      createdAt: new Date('2026-03-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-03-08T00:00:00.000Z'),
+      roles: [
+        {
+          role: {
+            code: 'SCHOOL_ADMIN',
+            permissions: [
+              { permission: { code: 'users.read' } },
+              { permission: { code: 'users.write' } },
+            ],
+          },
+        },
+        {
+          role: {
+            code: 'SUPPORT',
+            permissions: [
+              { permission: { code: 'users.read' } },
+              { permission: { code: 'roles.read' } },
+            ],
+          },
+        },
+      ],
+    });
+
+    const result = await service.me('user-123');
+
+    expect(userFindUniqueMock).toHaveBeenCalledWith({
+      where: { id: 'user-123' },
+      select: expect.objectContaining({
+        id: true,
+        roles: expect.any(Object) as unknown,
+      }) as unknown,
+    });
+    expect(result).toEqual({
+      id: 'user-123',
+      schoolId: 'school-123',
+      email: 'owner@classivo.dev',
+      phone: null,
+      firstName: 'John',
+      lastName: 'Doe',
+      status: UserStatus.ACTIVE,
+      lastLoginAt: new Date('2026-03-08T00:00:00.000Z'),
+      createdAt: new Date('2026-03-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-03-08T00:00:00.000Z'),
+      roles: ['SCHOOL_ADMIN', 'SUPPORT'],
+      permissions: ['users.read', 'users.write', 'roles.read'],
+    });
+  });
+
+  it('should reject auth/me when the authenticated user no longer exists', async () => {
+    userFindUniqueMock.mockResolvedValueOnce(null);
+
+    await expect(service.me('missing-user')).rejects.toBeInstanceOf(
+      NotFoundException,
     );
   });
 

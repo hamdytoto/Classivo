@@ -39,7 +39,7 @@ Sprint 1 should remain an identity-and-access sprint. Do not pull academic domai
 
 ### Recommended additional Sprint 1 endpoints
 - [x] Add `POST /auth/register-school` to create a school plus its initial owner/admin account -> see `src/modules/auth/*` and `docs/sprint-1/bullet-11-register-school-plan.md`
-- [ ] Add `GET /auth/me` to return the authenticated actor with roles and permissions resolved from the token/database
+- [x] Add `GET /auth/me` to return the authenticated actor with roles and permissions resolved from the token/database -> see `src/modules/auth/*` and `docs/sprint-1/bullet-12-auth-me-plan.md`
 - [ ] Add `GET /auth/sessions` to list active refresh-token sessions for the current user
 - [ ] Add `DELETE /auth/sessions/:sessionId` to revoke a specific session/device
 - [ ] Add `POST /auth/logout-all` to revoke all active sessions except the current one, or all sessions if preferred

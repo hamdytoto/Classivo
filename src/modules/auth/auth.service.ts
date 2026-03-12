@@ -3,6 +3,7 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { UserStatus } from '@prisma/client';
@@ -16,7 +17,11 @@ import { RegisterSchoolDto } from './dto/register-school.dto';
 import {
   SessionContext,
 } from './auth.types';
-import { AUTH_USER_SELECT, SCHOOL_PUBLIC_SELECT } from './auth.constants';
+import {
+  AUTH_ME_SELECT,
+  AUTH_USER_SELECT,
+  SCHOOL_PUBLIC_SELECT,
+} from './auth.constants';
 import { AuthSessionService } from './auth-session.service';
 import { AuthTokenService } from './auth-token.service';
 import { handlePrismaError } from '../../common/prisma/prisma-error.handler';
@@ -29,8 +34,6 @@ export class AuthService {
   ) { }
 
   async login(dto: LoginDto, sessionContext?: SessionContext) {
-    this.ensureSingleIdentifier(dto.email, dto.phone);
-
     const user = await this.prisma.user.findUnique({
       where: dto.email ? { email: dto.email } : { phone: dto.phone },
       select: {
@@ -73,6 +76,44 @@ export class AuthService {
     return {
       ...authTokens,
       user: authenticatedUser,
+    };
+  }
+
+  async me(actorId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: actorId },
+      select: AUTH_ME_SELECT,
+    });
+
+    if (!user) {
+      throw new NotFoundException({
+        code: 'USER_NOT_FOUND',
+        message: 'Authenticated user was not found',
+      });
+    }
+
+    const roles = user.roles.map((assignment) => assignment.role.code);
+    const permissions = [
+      ...new Set(
+        user.roles.flatMap((assignment) =>
+          assignment.role.permissions.map((entry) => entry.permission.code),
+        ),
+      ),
+    ];
+
+    return {
+      id: user.id,
+      schoolId: user.schoolId,
+      email: user.email,
+      phone: user.phone,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      status: user.status,
+      lastLoginAt: user.lastLoginAt,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      roles,
+      permissions,
     };
   }
 
@@ -273,23 +314,7 @@ export class AuthService {
 
     await this.authSessionService.revokeSession(session.id);
   }
-
-  private ensureSingleIdentifier(email?: string, phone?: string): void {
-    if (!email && !phone) {
-      throw new BadRequestException({
-        code: 'IDENTIFIER_REQUIRED',
-        message: 'Either email or phone must be provided',
-      });
-    }
-
-    if (email && phone) {
-      throw new BadRequestException({
-        code: 'IDENTIFIER_AMBIGUOUS',
-        message: 'Provide only one of email or phone',
-      });
-    }
-  }
-
+  
   private normalizeSchoolCode(code: string): string {
     return code.trim().toUpperCase();
   }
