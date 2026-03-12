@@ -17,10 +17,11 @@ import type { AuthenticatedActor } from '../../common/types/request-context.type
 import { LoginDto } from './dto/login.dto';
 import { LogoutDto } from './dto/logout.dto';
 import { LogoutAllDto } from './dto/logout-all.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterSchoolDto } from './dto/register-school.dto';
 import { AuthService } from './auth.service';
-import { CurrentUserId } from 'src/common/decorators/current-user.decorator';
+import { CurrentUserId } from '../../common/decorators';
 
 type SessionRequest = Request & {
   ip?: string;
@@ -126,6 +127,24 @@ export class AuthController {
       dto.refreshToken,
       dto.includeCurrent ?? false,
       actorId,
+    );
+  }
+
+  @Post('change-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(204)
+  @ApiOperation({
+    summary: 'Change password for the authenticated user',
+  })
+  async changePassword(
+    @Body() dto: ChangePasswordDto,
+    @CurrentUserId() userId: string,
+  ) {
+    await this.authService.changePassword(
+      userId,
+      dto.currentPassword,
+      dto.newPassword,
     );
   }
 

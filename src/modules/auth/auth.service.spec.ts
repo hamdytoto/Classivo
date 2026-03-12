@@ -837,4 +837,106 @@ describe('AuthService', () => {
     expect(result).toEqual({ revokedCount: 0 });
     revokeMultipleSpy.mockRestore();
   });
+
+  it('should successfully change password and revoke all sessions', async () => {
+    const oldPasswordHash = await hash('OldPassword123');
+    const newPasswordHash = await hash('NewPassword456');
+
+    userFindUniqueMock.mockResolvedValueOnce({
+      id: 'user-123',
+      passwordHash: oldPasswordHash,
+      status: UserStatus.ACTIVE,
+    });
+
+    const transactionMock = jest.fn().mockImplementation(async (callback) => {
+      return callback({
+        user: {
+          update: jest.fn().mockResolvedValueOnce({ id: 'user-123' }),
+        },
+        session: {
+          updateMany: jest
+            .fn()
+            .mockResolvedValueOnce({ count: 3 }),
+        },
+      });
+    });
+
+    (prismaMock.$transaction as jest.Mock) = transactionMock;
+
+    await expect(
+      service.changePassword('user-123', 'OldPassword123', 'NewPassword456'),
+    ).resolves.toBeUndefined();
+
+    expect(userFindUniqueMock).toHaveBeenCalledWith({
+      where: { id: 'user-123' },
+      select: {
+        id: true,
+        passwordHash: true,
+        status: true,
+      },
+    });
+  });
+
+  it('should reject password change with invalid current password', async () => {
+    const passwordHash = await hash('OldPassword123');
+
+    userFindUniqueMock.mockResolvedValueOnce({
+      id: 'user-123',
+      passwordHash,
+      status: UserStatus.ACTIVE,
+    });
+
+    await expect(
+      service.changePassword('user-123', 'WrongPassword', 'NewPassword456'),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(userFindUniqueMock).toHaveBeenCalledWith({
+      where: { id: 'user-123' },
+      select: {
+        id: true,
+        passwordHash: true,
+        status: true,
+      },
+    });
+  });
+
+  it('should reject password change when user does not exist', async () => {
+    userFindUniqueMock.mockResolvedValueOnce(null);
+
+    await expect(
+      service.changePassword('missing-user', 'OldPassword123', 'NewPassword456'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(userFindUniqueMock).toHaveBeenCalledWith({
+      where: { id: 'missing-user' },
+      select: {
+        id: true,
+        passwordHash: true,
+        status: true,
+      },
+    });
+  });
+
+  it('should reject password change when account is inactive', async () => {
+    const passwordHash = await hash('OldPassword123');
+
+    userFindUniqueMock.mockResolvedValueOnce({
+      id: 'user-123',
+      passwordHash,
+      status: UserStatus.SUSPENDED,
+    });
+
+    await expect(
+      service.changePassword('user-123', 'OldPassword123', 'NewPassword456'),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(userFindUniqueMock).toHaveBeenCalledWith({
+      where: { id: 'user-123' },
+      select: {
+        id: true,
+        passwordHash: true,
+        status: true,
+      },
+    });
+  });
 });

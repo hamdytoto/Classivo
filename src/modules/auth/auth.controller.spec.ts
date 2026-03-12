@@ -16,6 +16,7 @@ describe('AuthController', () => {
   const refreshMock = jest.fn();
   const logoutMock = jest.fn();
   const logoutAllMock = jest.fn();
+  const changePasswordMock = jest.fn();
   const authServiceMock = {
     login: loginMock,
     me: meMock,
@@ -25,6 +26,7 @@ describe('AuthController', () => {
     refresh: refreshMock,
     logout: logoutMock,
     logoutAll: logoutAllMock,
+    changePassword: changePasswordMock,
   };
 
   beforeEach(async () => {
@@ -169,9 +171,7 @@ describe('AuthController', () => {
       permissions: ['users.read'],
     });
 
-    const result = await controller.me({
-      user: { id: 'user-123' },
-    } as never);
+    const result = await controller.me('user-123');
 
     expect(meMock).toHaveBeenCalledWith('user-123');
     expect(result).toEqual({
@@ -187,9 +187,7 @@ describe('AuthController', () => {
       { id: 'session-2' },
     ]);
 
-    const result = await controller.sessions({
-      user: { id: 'user-123' },
-    } as never);
+    const result = await controller.sessions('user-123');
 
     expect(sessionsMock).toHaveBeenCalledWith('user-123');
     expect(result).toEqual([{ id: 'session-1' }, { id: 'session-2' }]);
@@ -198,12 +196,7 @@ describe('AuthController', () => {
   it('should delegate session revocation to auth service', async () => {
     revokeSessionMock.mockResolvedValueOnce(undefined);
 
-    const result = await controller.revokeSession(
-      'session-123',
-      {
-        user: { id: 'user-123' },
-      } as never,
-    );
+    const result = await controller.revokeSession('session-123', 'user-123');
 
     expect(revokeSessionMock).toHaveBeenCalledWith('session-123', 'user-123');
     expect(result).toBeUndefined();
@@ -216,9 +209,7 @@ describe('AuthController', () => {
       {
         refreshToken: 'refresh-token',
       } as never,
-      {
-        user: { id: 'user-123' },
-      } as never,
+      'user-123',
     );
 
     expect(logoutMock).toHaveBeenCalledWith('refresh-token', 'user-123');
@@ -233,12 +224,29 @@ describe('AuthController', () => {
         refreshToken: 'refresh-token',
         includeCurrent: false,
       } as never,
-      {
-        user: { id: 'user-123' },
-      } as never,
+      'user-123',
     );
 
     expect(logoutAllMock).toHaveBeenCalledWith('refresh-token', false, 'user-123');
     expect(result).toEqual({ revokedCount: 2 });
+  });
+
+  it('should delegate change-password to auth service', async () => {
+    changePasswordMock.mockResolvedValueOnce(undefined);
+
+    const result = await controller.changePassword(
+      {
+        currentPassword: 'OldPassword123',
+        newPassword: 'NewPassword456',
+      } as never,
+      'user-123',
+    );
+
+    expect(changePasswordMock).toHaveBeenCalledWith(
+      'user-123',
+      'OldPassword123',
+      'NewPassword456',
+    );
+    expect(result).toBeUndefined();
   });
 });

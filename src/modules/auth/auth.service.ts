@@ -34,8 +34,6 @@ export class AuthService {
   ) { }
 
   async login(dto: LoginDto, sessionContext?: SessionContext) {
-    this.ensureSingleIdentifier(dto.email, dto.phone);
-
     const user = await this.prisma.user.findUnique({
       where: dto.email ? { email: dto.email } : { phone: dto.phone },
       select: {
@@ -394,20 +392,69 @@ export class AuthService {
     return { revokedCount };
   }
 
-  private ensureSingleIdentifier(email?: string, phone?: string): void {
-    if (!email && !phone) {
-      throw new BadRequestException({
-        code: 'IDENTIFIER_REQUIRED',
-        message: 'Either email or phone must be provided',
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        passwordHash: true,
+        status: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException({
+        code: 'USER_NOT_FOUND',
+        message: 'User not found',
       });
     }
 
-    if (email && phone) {
-      throw new BadRequestException({
-        code: 'IDENTIFIER_AMBIGUOUS',
-        message: 'Provide only one of email or phone',
+    if (user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException({
+        code: 'ACCOUNT_INACTIVE',
+        message: 'Account is not active',
       });
     }
+
+    const isCurrentPasswordValid = await compareHash(
+      currentPassword,
+      user.passwordHash,
+    );
+
+    if (!isCurrentPasswordValid) {
+      throw new UnauthorizedException({
+        code: 'INVALID_CURRENT_PASSWORD',
+        message: 'Current password is incorrect',
+      });
+    }
+
+    const newPasswordHash = await hash(newPassword);
+
+    await this.prisma.$transaction(async (tx) => {
+      // Update password
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          passwordHash: newPasswordHash,
+          updatedAt: new Date(),
+        },
+      });
+
+      // Revoke all active sessions to force re-login
+      await tx.session.updateMany({
+        where: {
+          userId,
+          revokedAt: null,
+        },
+        data: {
+          revokedAt: new Date(),
+        },
+      });
+    });
   }
 
   private normalizeSchoolCode(code: string): string {
