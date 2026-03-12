@@ -334,6 +334,62 @@ describe('AuthService', () => {
     await expect(service.sessions('user-123')).resolves.toEqual([]);
   });
 
+  it('should revoke a specific owned session', async () => {
+    sessionFindUniqueMock.mockResolvedValueOnce({
+      id: 'session-123',
+      userId: 'user-123',
+      refreshTokenHash: hashToken('refresh-token'),
+      expiresAt: new Date(Date.now() + 60_000),
+      revokedAt: null,
+    });
+
+    await expect(
+      service.revokeSession('session-123', 'user-123'),
+    ).resolves.toBeUndefined();
+
+    expect(sessionUpdateManyMock).toHaveBeenCalledWith({
+      where: {
+        id: 'session-123',
+        revokedAt: null,
+      },
+      data: {
+        revokedAt: anyDate,
+      },
+    });
+  });
+
+  it('should reject revoking a session that does not belong to the actor', async () => {
+    sessionFindUniqueMock.mockResolvedValueOnce({
+      id: 'session-123',
+      userId: 'user-456',
+      refreshTokenHash: hashToken('refresh-token'),
+      expiresAt: new Date(Date.now() + 60_000),
+      revokedAt: null,
+    });
+
+    await expect(
+      service.revokeSession('session-123', 'user-123'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(sessionUpdateManyMock).not.toHaveBeenCalled();
+  });
+
+  it('should treat revoking an already revoked session as idempotent', async () => {
+    sessionFindUniqueMock.mockResolvedValueOnce({
+      id: 'session-123',
+      userId: 'user-123',
+      refreshTokenHash: hashToken('refresh-token'),
+      expiresAt: new Date(Date.now() + 60_000),
+      revokedAt: new Date(),
+    });
+
+    await expect(
+      service.revokeSession('session-123', 'user-123'),
+    ).resolves.toBeUndefined();
+
+    expect(sessionUpdateManyMock).not.toHaveBeenCalled();
+  });
+
   it('should register a school and bootstrap its owner session', async () => {
     const transactionClient = {
       school: {

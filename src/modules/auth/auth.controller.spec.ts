@@ -11,6 +11,7 @@ describe('AuthController', () => {
   const loginMock = jest.fn();
   const meMock = jest.fn();
   const sessionsMock = jest.fn();
+  const revokeSessionMock = jest.fn();
   const registerSchoolMock = jest.fn();
   const refreshMock = jest.fn();
   const logoutMock = jest.fn();
@@ -18,6 +19,7 @@ describe('AuthController', () => {
     login: loginMock,
     me: meMock,
     sessions: sessionsMock,
+    revokeSession: revokeSessionMock,
     registerSchool: registerSchoolMock,
     refresh: refreshMock,
     logout: logoutMock,
@@ -189,6 +191,20 @@ describe('AuthController', () => {
 
     expect(sessionsMock).toHaveBeenCalledWith('user-123');
     expect(result).toEqual([{ id: 'session-1' }, { id: 'session-2' }]);
+  });
+
+  it('should delegate session revocation to auth service', async () => {
+    revokeSessionMock.mockResolvedValueOnce(undefined);
+
+    const result = await controller.revokeSession(
+      'session-123',
+      {
+        user: { id: 'user-123' },
+      } as never,
+    );
+
+    expect(revokeSessionMock).toHaveBeenCalledWith('session-123', 'user-123');
+    expect(result).toBeUndefined();
   });
 
   it('should delegate logout to auth service', async () => {

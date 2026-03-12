@@ -94,7 +94,7 @@ export class AuthSessionService {
         });
     }
 
-    async revokeSession(sessionId: string): Promise<void> {
+    async revokeSession(sessionId: string): Promise<any> {
         await this.prisma.session.updateMany({
             where: {
                 id: sessionId,

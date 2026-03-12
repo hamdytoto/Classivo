@@ -34,6 +34,8 @@ export class AuthService {
   ) { }
 
   async login(dto: LoginDto, sessionContext?: SessionContext) {
+    this.ensureSingleIdentifier(dto.email, dto.phone);
+
     const user = await this.prisma.user.findUnique({
       where: dto.email ? { email: dto.email } : { phone: dto.phone },
       select: {
@@ -119,6 +121,26 @@ export class AuthService {
 
   async sessions(actorId: string) {
     return this.authSessionService.listActiveSessions(actorId);
+  }
+
+  async revokeSession(sessionId: string, actorId: string): Promise<any> {
+    console.log("testing is working ");
+    const session = await this.authSessionService.findSession(sessionId);
+    if (!session || session.userId !== actorId) {
+      throw new NotFoundException({
+        code: 'SESSION_NOT_FOUND',
+        message: 'Session not found',
+      });
+    }
+
+    if (session.revokedAt) {
+      return {
+        code: 'SESSION_ALREADY_REVOKED',
+        message: 'Session has already been revoked',
+      };
+    }
+
+   return await this.authSessionService.revokeSession(session.id);
   }
 
   async registerSchool(
@@ -317,6 +339,22 @@ export class AuthService {
     }
 
     await this.authSessionService.revokeSession(session.id);
+  }
+
+  private ensureSingleIdentifier(email?: string, phone?: string): void {
+    if (!email && !phone) {
+      throw new BadRequestException({
+        code: 'IDENTIFIER_REQUIRED',
+        message: 'Either email or phone must be provided',
+      });
+    }
+
+    if (email && phone) {
+      throw new BadRequestException({
+        code: 'IDENTIFIER_AMBIGUOUS',
+        message: 'Provide only one of email or phone',
+      });
+    }
   }
 
   private normalizeSchoolCode(code: string): string {

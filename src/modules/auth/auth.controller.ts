@@ -1,8 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
+  Param,
   Post,
   Req,
   UnauthorizedException,
@@ -92,6 +94,29 @@ export class AuthController {
     }
 
     return this.authService.sessions(actorId);
+  }
+
+  @Delete('sessions/:sessionId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(204)
+  @ApiOperation({
+    summary: 'Revoke a specific active session for the authenticated user',
+  })
+  async revokeSession(
+    @Param('sessionId') sessionId: string,
+    @Req() request: SessionRequest,
+  ) {
+    const actorId = this.extractActorId(request);
+    if (!actorId) {
+      throw new UnauthorizedException({
+        code: 'AUTH_REQUIRED',
+        message:
+          'Authenticated user is required. Provide a valid access token.',
+      });
+    }
+
+    await this.authService.revokeSession(sessionId, actorId);
   }
 
   @Post('refresh')
