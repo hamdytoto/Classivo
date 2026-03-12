@@ -56,6 +56,27 @@ export class AuthSessionService {
         });
     }
 
+    async listActiveSessions(userId: string) {
+        return this.prisma.session.findMany({
+            where: {
+                userId,
+                revokedAt: null,
+            },
+            orderBy: [
+                { updatedAt: 'desc' },
+                { createdAt: 'desc' },
+            ],
+            select: {
+                id: true,
+                ipAddress: true,
+                userAgent: true,
+                expiresAt: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
+    }
+
     async rotateSession(params: {
         sessionId: string;
         refreshToken: string;

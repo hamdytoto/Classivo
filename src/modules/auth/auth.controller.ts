@@ -61,8 +61,7 @@ export class AuthController {
       'Return the authenticated actor with current roles and permissions',
   })
   me(@Req() request: SessionRequest) {
-    const actor = request.user;
-    const actorId = actor?.id ?? actor?.userId ?? actor?.sub;
+    const actorId = this.extractActorId(request);
 
     if (!actorId) {
       throw new UnauthorizedException({
@@ -73,6 +72,26 @@ export class AuthController {
     }
 
     return this.authService.me(actorId);
+  }
+
+  @Get('sessions')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'List active refresh-token sessions for the authenticated user',
+  })
+  sessions(@Req() request: SessionRequest) {
+    const actorId = this.extractActorId(request);
+
+    if (!actorId) {
+      throw new UnauthorizedException({
+        code: 'AUTH_REQUIRED',
+        message:
+          'Authenticated user is required. Provide a valid access token.',
+      });
+    }
+
+    return this.authService.sessions(actorId);
   }
 
   @Post('refresh')

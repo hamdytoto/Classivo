@@ -29,6 +29,7 @@ describe('AuthService', () => {
   const userRoleCreateMock = jest.fn();
   const sessionCreateMock = jest.fn();
   const sessionFindUniqueMock = jest.fn();
+  const sessionFindManyMock = jest.fn();
   const sessionUpdateMock = jest.fn();
   const sessionUpdateManyMock = jest.fn();
   const prismaMock = {
@@ -49,6 +50,7 @@ describe('AuthService', () => {
     session: {
       create: sessionCreateMock,
       findUnique: sessionFindUniqueMock,
+      findMany: sessionFindManyMock,
       update: sessionUpdateMock,
       updateMany: sessionUpdateManyMock,
     },
@@ -267,6 +269,69 @@ describe('AuthService', () => {
     await expect(service.me('missing-user')).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+
+  it('should return active sessions for the authenticated actor', async () => {
+    sessionFindManyMock.mockResolvedValueOnce([
+      {
+        id: 'session-2',
+        ipAddress: '10.0.0.2',
+        userAgent: 'Chrome',
+        expiresAt: new Date('2026-03-20T00:00:00.000Z'),
+        createdAt: new Date('2026-03-11T00:00:00.000Z'),
+        updatedAt: new Date('2026-03-12T00:00:00.000Z'),
+      },
+      {
+        id: 'session-1',
+        ipAddress: '10.0.0.1',
+        userAgent: 'Safari',
+        expiresAt: new Date('2026-03-19T00:00:00.000Z'),
+        createdAt: new Date('2026-03-10T00:00:00.000Z'),
+        updatedAt: new Date('2026-03-11T00:00:00.000Z'),
+      },
+    ]);
+
+    const result = await service.sessions('user-123');
+
+    expect(sessionFindManyMock).toHaveBeenCalledWith({
+      where: {
+        userId: 'user-123',
+        revokedAt: null,
+      },
+      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+      select: {
+        id: true,
+        ipAddress: true,
+        userAgent: true,
+        expiresAt: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+    expect(result).toEqual([
+      {
+        id: 'session-2',
+        ipAddress: '10.0.0.2',
+        userAgent: 'Chrome',
+        expiresAt: new Date('2026-03-20T00:00:00.000Z'),
+        createdAt: new Date('2026-03-11T00:00:00.000Z'),
+        updatedAt: new Date('2026-03-12T00:00:00.000Z'),
+      },
+      {
+        id: 'session-1',
+        ipAddress: '10.0.0.1',
+        userAgent: 'Safari',
+        expiresAt: new Date('2026-03-19T00:00:00.000Z'),
+        createdAt: new Date('2026-03-10T00:00:00.000Z'),
+        updatedAt: new Date('2026-03-11T00:00:00.000Z'),
+      },
+    ]);
+  });
+
+  it('should return an empty active session list when the actor has none', async () => {
+    sessionFindManyMock.mockResolvedValueOnce([]);
+
+    await expect(service.sessions('user-123')).resolves.toEqual([]);
   });
 
   it('should register a school and bootstrap its owner session', async () => {

@@ -117,6 +117,10 @@ export class AuthService {
     };
   }
 
+  async sessions(actorId: string) {
+    return this.authSessionService.listActiveSessions(actorId);
+  }
+
   async registerSchool(
     dto: RegisterSchoolDto,
     sessionContext?: SessionContext,
@@ -314,7 +318,7 @@ export class AuthService {
 
     await this.authSessionService.revokeSession(session.id);
   }
-  
+
   private normalizeSchoolCode(code: string): string {
     return code.trim().toUpperCase();
   }

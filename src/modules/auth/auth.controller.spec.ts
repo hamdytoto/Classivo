@@ -10,12 +10,14 @@ describe('AuthController', () => {
 
   const loginMock = jest.fn();
   const meMock = jest.fn();
+  const sessionsMock = jest.fn();
   const registerSchoolMock = jest.fn();
   const refreshMock = jest.fn();
   const logoutMock = jest.fn();
   const authServiceMock = {
     login: loginMock,
     me: meMock,
+    sessions: sessionsMock,
     registerSchool: registerSchoolMock,
     refresh: refreshMock,
     logout: logoutMock,
@@ -173,6 +175,20 @@ describe('AuthController', () => {
       roles: ['SCHOOL_ADMIN'],
       permissions: ['users.read'],
     });
+  });
+
+  it('should delegate auth/sessions to auth service', async () => {
+    sessionsMock.mockResolvedValueOnce([
+      { id: 'session-1' },
+      { id: 'session-2' },
+    ]);
+
+    const result = await controller.sessions({
+      user: { id: 'user-123' },
+    } as never);
+
+    expect(sessionsMock).toHaveBeenCalledWith('user-123');
+    expect(result).toEqual([{ id: 'session-1' }, { id: 'session-2' }]);
   });
 
   it('should delegate logout to auth service', async () => {
