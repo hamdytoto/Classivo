@@ -16,6 +16,7 @@ import type { AuthenticatedActor } from '../../common/types/request-context.type
 import { LoginDto } from './dto/login.dto';
 import { LogoutDto } from './dto/logout.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { RegisterSchoolDto } from './dto/register-school.dto';
 import { AuthService } from './auth.service';
 
 type SessionRequest = Request & {
@@ -43,6 +44,22 @@ export class AuthController {
     return this.authService.login(dto, this.extractSessionContext(request));
   }
 
+  @Post('register-school')
+  @Public()
+  @UseGuards(AuthRateLimitGuard)
+  @ApiOperation({
+    summary: 'Register a school and bootstrap its initial school-admin account',
+  })
+  registerSchool(
+    @Body() dto: RegisterSchoolDto,
+    @Req() request: SessionRequest,
+  ) {
+    return this.authService.registerSchool(
+      dto,
+      this.extractSessionContext(request),
+    );
+  }
+
   @Post('refresh')
   @Public()
   @UseGuards(AuthRateLimitGuard)
@@ -58,7 +75,9 @@ export class AuthController {
   @UseGuards(JwtAuthGuard, AuthRateLimitGuard)
   @ApiBearerAuth()
   @HttpCode(204)
-  @ApiOperation({ summary: 'Logout and revoke the active refresh-token session' })
+  @ApiOperation({
+    summary: 'Logout and revoke the active refresh-token session',
+  })
   async logout(@Body() dto: LogoutDto, @Req() request: SessionRequest) {
     const actor = request.user;
     const actorId = actor?.id ?? actor?.userId ?? actor?.sub;

@@ -34,6 +34,43 @@
 - [x] Add auth rate limiting -> see `src/common/config/rate-limit.config.ts`, `src/common/guards/auth-rate-limit.guard.ts`, `src/modules/auth/auth.controller.ts`, `docs/sprint-1/bullet-9-auth-rate-limiting-plan.md`
 - [x] Seed baseline roles: SuperAdmin, SchoolAdmin, Teacher, Student, Parent, Support -> see `prisma/seed.js`, `prisma/seed-data.js`, `docs/sprint-1/bullet-10-baseline-roles-seed-plan.md`
 
+### Sprint 1 revision
+Sprint 1 should remain an identity-and-access sprint. Do not pull academic domain CRUD into it. The goal is to leave Sprint 1 with production-usable authentication, authorization, session control, and admin user management.
+
+### Recommended additional Sprint 1 endpoints
+- [x] Add `POST /auth/register-school` to create a school plus its initial owner/admin account -> see `src/modules/auth/*` and `docs/sprint-1/bullet-11-register-school-plan.md`
+- [ ] Add `GET /auth/me` to return the authenticated actor with roles and permissions resolved from the token/database
+- [ ] Add `GET /auth/sessions` to list active refresh-token sessions for the current user
+- [ ] Add `DELETE /auth/sessions/:sessionId` to revoke a specific session/device
+- [ ] Add `POST /auth/logout-all` to revoke all active sessions except the current one, or all sessions if preferred
+- [ ] Add `POST /auth/change-password` for authenticated password rotation
+- [ ] Add `POST /auth/forgot-password` to create a password-reset request placeholder or full flow
+- [ ] Add `POST /auth/reset-password` to complete password reset with a token
+- [ ] Add `GET /users/:id/roles` to inspect a user's assigned roles
+- [ ] Add `GET /users/:id/permissions` to inspect effective permissions resolved through roles
+- [ ] Add `GET /roles/:id/users` to list users assigned to a role
+
+### Recommended Sprint 1 enhancements
+- [ ] Define `register-school` rules clearly: who can call it, which default role is assigned, and whether school creation is public or controlled by a platform admin
+- [ ] Add uniqueness rules for school slug/subdomain, owner email, and owner phone during `register-school`
+- [ ] Add transactional school bootstrap logic: create school, owner account, initial role assignment, and baseline defaults atomically
+- [ ] Add onboarding defaults during `register-school` such as academic year placeholder, default settings, and seeded school-scoped roles if required
+- [ ] Protect `roles` and sensitive `users` endpoints with role/permission checks, not JWT only
+- [ ] Add pagination, filtering, and sorting conventions to all list endpoints
+- [ ] Add consistent audit events for login, refresh, logout, password change, role assignment, and permission changes
+- [ ] Store richer session metadata: IP, user agent, last used at, revoked at
+- [ ] Add account status enforcement (`ACTIVE`, `SUSPENDED`, `DISABLED`) inside login and token refresh flows
+- [ ] Add DTO-level validation for all auth and role-management operations if any remain uncovered
+- [ ] Add integration or e2e tests for `login -> refresh -> logout`, role assignment, and access denial cases
+- [ ] Add Swagger response examples for auth errors, forbidden responses, and validation failures
+
+### Explicitly defer from Sprint 1
+- [ ] Schools, courses, classes, and enrollments CRUD
+- [ ] Full school administration CRUD beyond `register-school`
+- [ ] Lessons, materials, and file uploads
+- [ ] Attendance, announcements, and notifications business flows
+- [ ] Parent linkage and student-facing academic endpoints
+
 ## 3) Schools, Courses, Classes, Enrollments (Sprint 2)
 - [ ] Implement `schools` module
 - [ ] Implement `classes` module

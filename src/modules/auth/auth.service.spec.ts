@@ -1,7 +1,12 @@
-import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  InternalServerErrorException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
-import { UserStatus } from '@prisma/client';
+import { Prisma, UserStatus } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { hash } from '../../common/security/hash.utils';
 import { hashToken } from '../../common/security/jwt.utils';
@@ -9,23 +14,48 @@ import { AuthService } from './auth.service';
 
 describe('AuthService', () => {
   let service: AuthService;
+  const anyString = expect.any(String) as unknown;
+  const anyDate = expect.any(Date) as unknown;
+  const anyObject = expect.any(Object) as unknown;
 
+  const prismaTransactionMock = jest.fn();
+  const userFindUniqueMock = jest.fn();
+  const userUpdateMock = jest.fn();
+  const roleFindUniqueMock = jest.fn();
+  const schoolCreateMock = jest.fn();
+  const userRoleCreateMock = jest.fn();
+  const sessionCreateMock = jest.fn();
+  const sessionFindUniqueMock = jest.fn();
+  const sessionUpdateMock = jest.fn();
+  const sessionUpdateManyMock = jest.fn();
   const prismaMock = {
+    $transaction: prismaTransactionMock,
     user: {
-      findUnique: jest.fn(),
-      update: jest.fn(),
+      findUnique: userFindUniqueMock,
+      update: userUpdateMock,
+    },
+    role: {
+      findUnique: roleFindUniqueMock,
+    },
+    school: {
+      create: schoolCreateMock,
+    },
+    userRole: {
+      create: userRoleCreateMock,
     },
     session: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      update: jest.fn(),
-      updateMany: jest.fn(),
+      create: sessionCreateMock,
+      findUnique: sessionFindUniqueMock,
+      update: sessionUpdateMock,
+      updateMany: sessionUpdateManyMock,
     },
   } as unknown as PrismaService;
 
+  const signAsyncMock = jest.fn();
+  const verifyAsyncMock = jest.fn();
   const jwtServiceMock = {
-    signAsync: jest.fn(),
-    verifyAsync: jest.fn(),
+    signAsync: signAsyncMock,
+    verifyAsync: verifyAsyncMock,
   } as unknown as JwtService;
 
   beforeEach(async () => {
@@ -75,7 +105,7 @@ describe('AuthService', () => {
   });
 
   it('should reject login when user does not exist', async () => {
-    (prismaMock.user.findUnique as jest.Mock).mockResolvedValueOnce(null);
+    userFindUniqueMock.mockResolvedValueOnce(null);
 
     await expect(
       service.login({
@@ -86,13 +116,13 @@ describe('AuthService', () => {
   });
 
   it('should issue access and refresh tokens on successful login', async () => {
-    (prismaMock.user.findUnique as jest.Mock).mockResolvedValueOnce({
+    userFindUniqueMock.mockResolvedValueOnce({
       id: 'e11785dc-d1e3-4ef2-a880-7379100d24d0',
       status: UserStatus.ACTIVE,
       passwordHash: await hash('Password123'),
     });
 
-    (prismaMock.user.update as jest.Mock).mockResolvedValueOnce({
+    userUpdateMock.mockResolvedValueOnce({
       id: 'e11785dc-d1e3-4ef2-a880-7379100d24d0',
       schoolId: null,
       email: 'john@classivo.dev',
@@ -105,7 +135,7 @@ describe('AuthService', () => {
       updatedAt: new Date('2026-03-08T00:00:00.000Z'),
     });
 
-    (jwtServiceMock.signAsync as jest.Mock)
+    signAsyncMock
       .mockResolvedValueOnce('access-token')
       .mockResolvedValueOnce('refresh-token');
 
@@ -120,7 +150,7 @@ describe('AuthService', () => {
       },
     );
 
-    expect(jwtServiceMock.signAsync).toHaveBeenNthCalledWith(
+    expect(signAsyncMock).toHaveBeenNthCalledWith(
       1,
       {
         sub: 'e11785dc-d1e3-4ef2-a880-7379100d24d0',
@@ -132,29 +162,29 @@ describe('AuthService', () => {
       expect.objectContaining({
         secret: 'test-access-secret',
         expiresIn: 900,
-        jwtid: expect.any(String),
+        jwtid: anyString,
       }),
     );
-    expect(jwtServiceMock.signAsync).toHaveBeenNthCalledWith(
+    expect(signAsyncMock).toHaveBeenNthCalledWith(
       2,
       {
         sub: 'e11785dc-d1e3-4ef2-a880-7379100d24d0',
-        sid: expect.any(String),
+        sid: anyString,
         type: 'refresh',
       },
       expect.objectContaining({
         secret: 'test-refresh-secret',
         expiresIn: 604800,
-        jwtid: expect.any(String),
+        jwtid: anyString,
       }),
     );
-    expect(prismaMock.session.create).toHaveBeenCalledWith({
+    expect(sessionCreateMock).toHaveBeenCalledWith({
       data: expect.objectContaining({
         userId: 'e11785dc-d1e3-4ef2-a880-7379100d24d0',
         refreshTokenHash: hashToken('refresh-token'),
         ipAddress: '127.0.0.1',
         userAgent: 'jest',
-      }),
+      }) as unknown,
     });
     expect(result).toEqual(
       expect.objectContaining({
@@ -167,14 +197,189 @@ describe('AuthService', () => {
     );
   });
 
+  it('should register a school and bootstrap its owner session', async () => {
+    const transactionClient = {
+      school: {
+        create: jest.fn().mockResolvedValueOnce({
+          id: 'school-123',
+          name: 'Classivo Academy',
+          code: 'CLASSIVO',
+          createdAt: new Date('2026-03-09T00:00:00.000Z'),
+          updatedAt: new Date('2026-03-09T00:00:00.000Z'),
+        }),
+      },
+      user: {
+        create: jest.fn().mockResolvedValueOnce({
+          id: 'user-123',
+          schoolId: 'school-123',
+          email: 'owner@classivo.dev',
+          phone: null,
+          firstName: 'John',
+          lastName: 'Doe',
+          status: UserStatus.ACTIVE,
+          lastLoginAt: null,
+          createdAt: new Date('2026-03-09T00:00:00.000Z'),
+          updatedAt: new Date('2026-03-09T00:00:00.000Z'),
+        }),
+      },
+      userRole: {
+        create: jest.fn().mockResolvedValueOnce(undefined),
+      },
+      session: {
+        create: jest.fn().mockResolvedValueOnce({
+          id: 'session-123',
+        }),
+      },
+    };
+
+    roleFindUniqueMock.mockResolvedValueOnce({
+      id: 'role-school-admin',
+      code: 'SCHOOL_ADMIN',
+      name: 'School Admin',
+    });
+    prismaTransactionMock.mockImplementationOnce(
+      async (
+        callback: (tx: typeof transactionClient) => Promise<unknown>,
+      ): Promise<unknown> => callback(transactionClient),
+    );
+    signAsyncMock
+      .mockResolvedValueOnce('access-token')
+      .mockResolvedValueOnce('refresh-token');
+
+    const result = await service.registerSchool(
+      {
+        schoolName: 'Classivo Academy',
+        schoolCode: 'classivo',
+        email: 'owner@classivo.dev',
+        password: 'Password123',
+        firstName: 'John',
+        lastName: 'Doe',
+      },
+      {
+        ipAddress: '127.0.0.1',
+        userAgent: 'jest',
+      },
+    );
+
+    expect(roleFindUniqueMock).toHaveBeenCalledWith({
+      where: { code: 'SCHOOL_ADMIN' },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+      },
+    });
+    expect(transactionClient.school.create).toHaveBeenCalledWith({
+      data: {
+        name: 'Classivo Academy',
+        code: 'CLASSIVO',
+      },
+      select: {
+        id: true,
+        name: true,
+        code: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+    expect(transactionClient.user.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        schoolId: 'school-123',
+        email: 'owner@classivo.dev',
+        firstName: 'John',
+        lastName: 'Doe',
+        status: UserStatus.ACTIVE,
+      }) as unknown,
+      select: anyObject,
+    });
+    expect(transactionClient.userRole.create).toHaveBeenCalledWith({
+      data: {
+        userId: 'user-123',
+        roleId: 'role-school-admin',
+      },
+    });
+    expect(transactionClient.session.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: 'user-123',
+        refreshTokenHash: hashToken('refresh-token'),
+        ipAddress: '127.0.0.1',
+        userAgent: 'jest',
+      }) as unknown,
+    });
+    expect(result).toEqual(
+      expect.objectContaining({
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+        assignedRole: {
+          id: 'role-school-admin',
+          code: 'SCHOOL_ADMIN',
+          name: 'School Admin',
+        },
+        school: expect.objectContaining({
+          id: 'school-123',
+          code: 'CLASSIVO',
+        }) as unknown,
+        user: expect.objectContaining({
+          id: 'user-123',
+          schoolId: 'school-123',
+        }) as unknown,
+      }),
+    );
+  });
+
+  it('should fail registration when SCHOOL_ADMIN baseline role is missing', async () => {
+    roleFindUniqueMock.mockResolvedValueOnce(null);
+
+    await expect(
+      service.registerSchool({
+        schoolName: 'Classivo Academy',
+        schoolCode: 'classivo',
+        email: 'owner@classivo.dev',
+        password: 'Password123',
+        firstName: 'John',
+        lastName: 'Doe',
+      }),
+    ).rejects.toBeInstanceOf(InternalServerErrorException);
+
+    expect(prismaTransactionMock).not.toHaveBeenCalled();
+  });
+
+  it('should convert duplicate school or owner conflicts into a conflict exception', async () => {
+    roleFindUniqueMock.mockResolvedValueOnce({
+      id: 'role-school-admin',
+      code: 'SCHOOL_ADMIN',
+      name: 'School Admin',
+    });
+    prismaTransactionMock.mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+        code: 'P2002',
+        clientVersion: 'test',
+        meta: {
+          target: ['School_code_key'],
+        },
+      }),
+    );
+
+    await expect(
+      service.registerSchool({
+        schoolName: 'Classivo Academy',
+        schoolCode: 'classivo',
+        email: 'owner@classivo.dev',
+        password: 'Password123',
+        firstName: 'John',
+        lastName: 'Doe',
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
   it('should rotate refresh token and update the session', async () => {
-    (jwtServiceMock.verifyAsync as jest.Mock).mockResolvedValueOnce({
+    verifyAsyncMock.mockResolvedValueOnce({
       sub: 'user-123',
       sid: 'session-123',
       type: 'refresh',
     });
 
-    (prismaMock.session.findUnique as jest.Mock).mockResolvedValueOnce({
+    sessionFindUniqueMock.mockResolvedValueOnce({
       id: 'session-123',
       userId: 'user-123',
       refreshTokenHash: hashToken('current-refresh-token'),
@@ -194,7 +399,7 @@ describe('AuthService', () => {
       },
     });
 
-    (jwtServiceMock.signAsync as jest.Mock)
+    signAsyncMock
       .mockResolvedValueOnce('new-access-token')
       .mockResolvedValueOnce('new-refresh-token');
 
@@ -203,19 +408,16 @@ describe('AuthService', () => {
       userAgent: 'jest',
     });
 
-    expect(jwtServiceMock.verifyAsync).toHaveBeenCalledWith(
-      'current-refresh-token',
-      {
-        secret: 'test-refresh-secret',
-      },
-    );
-    expect(prismaMock.session.update).toHaveBeenCalledWith({
+    expect(verifyAsyncMock).toHaveBeenCalledWith('current-refresh-token', {
+      secret: 'test-refresh-secret',
+    });
+    expect(sessionUpdateMock).toHaveBeenCalledWith({
       where: { id: 'session-123' },
       data: expect.objectContaining({
         refreshTokenHash: hashToken('new-refresh-token'),
         ipAddress: '127.0.0.1',
         userAgent: 'jest',
-      }),
+      }) as unknown,
     });
     expect(result).toEqual(
       expect.objectContaining({
@@ -228,13 +430,13 @@ describe('AuthService', () => {
   });
 
   it('should revoke the session when refresh token reuse is detected', async () => {
-    (jwtServiceMock.verifyAsync as jest.Mock).mockResolvedValueOnce({
+    verifyAsyncMock.mockResolvedValueOnce({
       sub: 'user-123',
       sid: 'session-123',
       type: 'refresh',
     });
 
-    (prismaMock.session.findUnique as jest.Mock).mockResolvedValueOnce({
+    sessionFindUniqueMock.mockResolvedValueOnce({
       id: 'session-123',
       userId: 'user-123',
       refreshTokenHash: hashToken('different-refresh-token'),
@@ -254,29 +456,29 @@ describe('AuthService', () => {
       },
     });
 
-    await expect(service.refresh('replayed-refresh-token')).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
+    await expect(
+      service.refresh('replayed-refresh-token'),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
 
-    expect(prismaMock.session.updateMany).toHaveBeenCalledWith({
+    expect(sessionUpdateManyMock).toHaveBeenCalledWith({
       where: {
         id: 'session-123',
         revokedAt: null,
       },
       data: {
-        revokedAt: expect.any(Date),
+        revokedAt: anyDate,
       },
     });
   });
 
   it('should revoke the targeted session on logout', async () => {
-    (jwtServiceMock.verifyAsync as jest.Mock).mockResolvedValueOnce({
+    verifyAsyncMock.mockResolvedValueOnce({
       sub: 'user-123',
       sid: 'session-123',
       type: 'refresh',
     });
 
-    (prismaMock.session.findUnique as jest.Mock).mockResolvedValueOnce({
+    sessionFindUniqueMock.mockResolvedValueOnce({
       id: 'session-123',
       userId: 'user-123',
       refreshTokenHash: hashToken('refresh-token'),
@@ -284,41 +486,43 @@ describe('AuthService', () => {
       revokedAt: null,
     });
 
-    await expect(service.logout('refresh-token', 'user-123')).resolves.toBeUndefined();
+    await expect(
+      service.logout('refresh-token', 'user-123'),
+    ).resolves.toBeUndefined();
 
-    expect(prismaMock.session.updateMany).toHaveBeenCalledWith({
+    expect(sessionUpdateManyMock).toHaveBeenCalledWith({
       where: {
         id: 'session-123',
         revokedAt: null,
       },
       data: {
-        revokedAt: expect.any(Date),
+        revokedAt: anyDate,
       },
     });
   });
 
   it('should reject logout when access token subject does not own the session', async () => {
-    (jwtServiceMock.verifyAsync as jest.Mock).mockResolvedValueOnce({
+    verifyAsyncMock.mockResolvedValueOnce({
       sub: 'user-123',
       sid: 'session-123',
       type: 'refresh',
     });
 
-    await expect(service.logout('refresh-token', 'user-456')).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
+    await expect(
+      service.logout('refresh-token', 'user-456'),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
 
-    expect(prismaMock.session.findUnique).not.toHaveBeenCalled();
+    expect(sessionFindUniqueMock).not.toHaveBeenCalled();
   });
 
   it('should reject refresh for a revoked session after logout', async () => {
-    (jwtServiceMock.verifyAsync as jest.Mock).mockResolvedValueOnce({
+    verifyAsyncMock.mockResolvedValueOnce({
       sub: 'user-123',
       sid: 'session-123',
       type: 'refresh',
     });
 
-    (prismaMock.session.findUnique as jest.Mock).mockResolvedValueOnce({
+    sessionFindUniqueMock.mockResolvedValueOnce({
       id: 'session-123',
       userId: 'user-123',
       refreshTokenHash: hashToken('refresh-token'),

@@ -392,6 +392,40 @@ Recommendation:
 - Swagger
 - Logging and validation
 
+Refined Sprint 1 objective:
+- Finish a production-usable identity and access layer before starting academic modules
+- Treat Sprint 1 as the trust boundary for the whole system: authentication, session lifecycle, role/permission administration, and user self-service
+
+Recommended Sprint 1 endpoint additions:
+- `POST /auth/register-school`
+- `GET /auth/me`
+- `GET /auth/sessions`
+- `DELETE /auth/sessions/:sessionId`
+- `POST /auth/logout-all`
+- `POST /auth/change-password`
+- `POST /auth/forgot-password`
+- `POST /auth/reset-password`
+- `GET /users/:id/roles`
+- `GET /users/:id/permissions`
+- `GET /roles/:id/users`
+
+Recommended Sprint 1 engineering enhancements:
+- Add atomic school bootstrap flow for `register-school`:
+  create school, create owner account, assign initial admin role, and seed school defaults in one transaction
+- Enforce uniqueness for school identity fields such as name slug/subdomain and owner identity fields
+- Decide whether `register-school` is public SaaS onboarding or restricted to platform operators
+- Apply role/permission guards to admin-only routes in `users` and `roles`
+- Add audit logging for authentication and access-management actions
+- Add session/device visibility and revocation support
+- Enforce account status checks during login and refresh
+- Add pagination/filtering standards for list endpoints
+- Add e2e coverage for auth lifecycle and authorization denial cases
+
+Out of scope for Sprint 1:
+- Schools CRUD after initial `register-school` bootstrap
+- Lessons, files, assignments
+- Attendance, announcements, notifications
+
 ### Sprint 2
 - Schools/classes/courses
 - Teacher/student management

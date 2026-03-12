@@ -1,19 +1,23 @@
 import { randomUUID } from 'crypto';
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
+  InternalServerErrorException,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { UserStatus } from '@prisma/client';
+import { Prisma, UserStatus } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { compareHash } from '../../common/security/hash.utils';
+import { compareHash, hash } from '../../common/security/hash.utils';
 import {
   getJwtAccessTokenConfig,
   getJwtRefreshTokenConfig,
   hashToken,
 } from '../../common/security/jwt.utils';
 import { LoginDto } from './dto/login.dto';
+import { RegisterSchoolDto } from './dto/register-school.dto';
 
 const AUTH_USER_SELECT = {
   id: true,
@@ -24,6 +28,14 @@ const AUTH_USER_SELECT = {
   lastName: true,
   status: true,
   lastLoginAt: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
+const SCHOOL_PUBLIC_SELECT = {
+  id: true,
+  name: true,
+  code: true,
   createdAt: true,
   updatedAt: true,
 } as const;
@@ -120,6 +132,85 @@ export class AuthService {
       ...authTokens,
       user: authenticatedUser,
     };
+  }
+
+  async registerSchool(
+    dto: RegisterSchoolDto,
+    sessionContext?: SessionContext,
+  ) {
+    const schoolCode = this.normalizeSchoolCode(dto.schoolCode);
+    const schoolAdminRole = await this.prisma.role.findUnique({
+      where: { code: 'SCHOOL_ADMIN' },
+      select: {
+        id: true,
+        code: true,
+        name: true,
+      },
+    });
+
+    if (!schoolAdminRole) {
+      throw new InternalServerErrorException({
+        code: 'BASELINE_ROLE_NOT_FOUND',
+        message: 'Baseline role SCHOOL_ADMIN is not configured',
+      });
+    }
+
+    const passwordHash = await hash(dto.password);
+    const sessionId = randomUUID();
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const school = await tx.school.create({
+          data: {
+            name: dto.schoolName.trim(),
+            code: schoolCode,
+          },
+          select: SCHOOL_PUBLIC_SELECT,
+        });
+
+        const user = await tx.user.create({
+          data: {
+            schoolId: school.id,
+            email: dto.email.trim().toLowerCase(),
+            phone: dto.phone?.trim() || null,
+            passwordHash,
+            firstName: dto.firstName.trim(),
+            lastName: dto.lastName.trim(),
+            status: UserStatus.ACTIVE,
+          },
+          select: AUTH_USER_SELECT,
+        });
+
+        await tx.userRole.create({
+          data: {
+            userId: user.id,
+            roleId: schoolAdminRole.id,
+          },
+        });
+
+        const authTokens = await this.issueTokenPair(user, sessionId);
+
+        await tx.session.create({
+          data: {
+            id: sessionId,
+            userId: user.id,
+            refreshTokenHash: hashToken(authTokens.refreshToken),
+            ipAddress: sessionContext?.ipAddress ?? null,
+            userAgent: sessionContext?.userAgent ?? null,
+            expiresAt: this.buildExpiryDate(authTokens.refreshExpiresIn),
+          },
+        });
+
+        return {
+          ...authTokens,
+          school,
+          user,
+          assignedRole: schoolAdminRole,
+        };
+      });
+    } catch (error) {
+      this.handlePrismaError(error);
+    }
   }
 
   async refresh(refreshToken: string, sessionContext?: SessionContext) {
@@ -373,5 +464,32 @@ export class AuthService {
 
   private buildExpiryDate(expiresInSeconds: number): Date {
     return new Date(Date.now() + expiresInSeconds * 1000);
+  }
+
+  private normalizeSchoolCode(code: string): string {
+    return code.trim().toUpperCase();
+  }
+
+  private handlePrismaError(error: unknown): never {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        const target = Array.isArray(error.meta?.target)
+          ? error.meta.target.join(', ')
+          : 'unique field';
+        throw new ConflictException({
+          code: 'UNIQUE_CONSTRAINT_VIOLATION',
+          message: `Duplicate value for ${target}`,
+        });
+      }
+
+      if (error.code === 'P2025') {
+        throw new NotFoundException({
+          code: 'RELATION_NOT_FOUND',
+          message: 'Requested relation was not found',
+        });
+      }
+    }
+
+    throw error;
   }
 }
