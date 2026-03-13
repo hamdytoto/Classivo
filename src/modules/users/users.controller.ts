@@ -59,11 +59,17 @@ export class UsersController {
   }
 
   @Get(':id/roles')
-  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Inspect roles assigned to a user' })
   @ApiParam({ name: 'id', format: 'uuid' })
   findRoles(@Param('id') id: string) {
     return this.usersService.findRoles(id);
+  }
+
+  @Get(':id/permissions')
+  @ApiOperation({ summary: 'Inspect effective permissions for a user' })
+  @ApiParam({ name: 'id', format: 'uuid' })
+  findPermissions(@Param('id') id: string) {
+    return this.usersService.findPermissions(id);
   }
 
   @Get(':id')

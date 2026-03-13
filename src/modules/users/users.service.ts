@@ -43,6 +43,32 @@ const USER_ROLES_SELECT = {
   },
 } as const;
 
+const USER_PERMISSIONS_SELECT = {
+  id: true,
+  roles: {
+    select: {
+      role: {
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          permissions: {
+            select: {
+              permission: {
+                select: {
+                  id: true,
+                  code: true,
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
@@ -191,6 +217,70 @@ export class UsersService {
         name: assignment.role.name,
         assignedAt: assignment.assignedAt,
       })),
+    };
+  }
+
+  async findPermissions(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: USER_PERMISSIONS_SELECT,
+    });
+
+    if (!user) {
+      throw new NotFoundException({
+        code: 'USER_NOT_FOUND',
+        message: 'User not found',
+      });
+    }
+
+    const permissionMap = new Map<
+      string,
+      {
+        id: string;
+        code: string;
+        name: string;
+        grantedByRoles: Array<{
+          id: string;
+          code: string;
+          name: string;
+        }>;
+      }
+    >();
+
+    for (const assignment of user.roles) {
+      const role = assignment.role;
+
+      for (const entry of role.permissions) {
+        const permission = entry.permission;
+        const existing = permissionMap.get(permission.code);
+
+        if (!existing) {
+          permissionMap.set(permission.code, {
+            id: permission.id,
+            code: permission.code,
+            name: permission.name,
+            grantedByRoles: [
+              {
+                id: role.id,
+                code: role.code,
+                name: role.name,
+              },
+            ],
+          });
+          continue;
+        }
+
+        existing.grantedByRoles.push({
+          id: role.id,
+          code: role.code,
+          name: role.name,
+        });
+      }
+    }
+
+    return {
+      userId: user.id,
+      permissions: Array.from(permissionMap.values()),
     };
   }
 

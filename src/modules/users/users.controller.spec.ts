@@ -11,6 +11,7 @@ describe('UsersController', () => {
     findAll: jest.fn(),
     findOne: jest.fn(),
     findRoles: jest.fn(),
+    findPermissions: jest.fn(),
     update: jest.fn(),
     me: jest.fn(),
   };
@@ -89,6 +90,47 @@ describe('UsersController', () => {
           code: 'SCHOOL_ADMIN',
           name: 'School Admin',
           assignedAt: new Date('2026-03-13T00:00:00.000Z'),
+        },
+      ],
+    });
+  });
+
+  it('should delegate user permission inspection to the service', async () => {
+    (usersServiceMock.findPermissions as jest.Mock).mockResolvedValueOnce({
+      userId: 'user-123',
+      permissions: [
+        {
+          id: 'permission-1',
+          code: 'users.read',
+          name: 'Read Users',
+          grantedByRoles: [
+            {
+              id: 'role-1',
+              code: 'SCHOOL_ADMIN',
+              name: 'School Admin',
+            },
+          ],
+        },
+      ],
+    });
+
+    const result = await controller.findPermissions('user-123');
+
+    expect(usersServiceMock.findPermissions).toHaveBeenCalledWith('user-123');
+    expect(result).toEqual({
+      userId: 'user-123',
+      permissions: [
+        {
+          id: 'permission-1',
+          code: 'users.read',
+          name: 'Read Users',
+          grantedByRoles: [
+            {
+              id: 'role-1',
+              code: 'SCHOOL_ADMIN',
+              name: 'School Admin',
+            },
+          ],
         },
       ],
     });

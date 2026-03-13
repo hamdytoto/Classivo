@@ -52,7 +52,7 @@ Sprint 1 should remain an identity-and-access sprint. Do not pull academic domai
 - [x] Add `POST /auth/forgot-password` to create a password-reset request placeholder or full flow -> see `src/modules/auth/*`, `src/modules/mail/*`, `prisma/schema.prisma`, and `docs/sprint-1/bullet-17-auth-forgot-reset-password-otp-plan.md`
 - [x] Add `POST /auth/reset-password` to complete password reset with a token -> see `src/modules/auth/*`, `src/modules/mail/*`, `prisma/schema.prisma`, and `docs/sprint-1/bullet-17-auth-forgot-reset-password-otp-plan.md`
 - [x] Add `GET /users/:id/roles` to inspect a user's assigned roles -> see `src/modules/users/*` and `docs/sprint-1/bullet-18-user-roles-inspection-plan.md`
-- [ ] Add `GET /users/:id/permissions` to inspect effective permissions resolved through roles
+- [x] Add `GET /users/:id/permissions` to inspect effective permissions resolved through roles -> see `src/modules/users/*` and `docs/sprint-1/bullet-19-user-permissions-inspection-plan.md`
 - [ ] Add `GET /roles/:id/users` to list users assigned to a role
 
 ### Recommended Sprint 1 enhancements

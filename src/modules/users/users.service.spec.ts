@@ -147,4 +147,94 @@ describe('UsersService', () => {
       NotFoundException,
     );
   });
+
+  it('should return effective permissions grouped by granting roles', async () => {
+    (prismaMock.user.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: 'user-123',
+      roles: [
+        {
+          role: {
+            id: 'role-1',
+            code: 'SCHOOL_ADMIN',
+            name: 'School Admin',
+            permissions: [
+              {
+                permission: {
+                  id: 'permission-1',
+                  code: 'users.read',
+                  name: 'Read Users',
+                },
+              },
+              {
+                permission: {
+                  id: 'permission-2',
+                  code: 'users.write',
+                  name: 'Write Users',
+                },
+              },
+            ],
+          },
+        },
+        {
+          role: {
+            id: 'role-2',
+            code: 'SUPPORT',
+            name: 'Support',
+            permissions: [
+              {
+                permission: {
+                  id: 'permission-1',
+                  code: 'users.read',
+                  name: 'Read Users',
+                },
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    await expect(service.findPermissions('user-123')).resolves.toEqual({
+      userId: 'user-123',
+      permissions: [
+        {
+          id: 'permission-1',
+          code: 'users.read',
+          name: 'Read Users',
+          grantedByRoles: [
+            {
+              id: 'role-1',
+              code: 'SCHOOL_ADMIN',
+              name: 'School Admin',
+            },
+            {
+              id: 'role-2',
+              code: 'SUPPORT',
+              name: 'Support',
+            },
+          ],
+        },
+        {
+          id: 'permission-2',
+          code: 'users.write',
+          name: 'Write Users',
+          grantedByRoles: [
+            {
+              id: 'role-1',
+              code: 'SCHOOL_ADMIN',
+              name: 'School Admin',
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('should reject permission inspection when the user does not exist', async () => {
+    (prismaMock.user.findUnique as jest.Mock).mockResolvedValueOnce(null);
+
+    await expect(
+      service.findPermissions('missing-user'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
 });
