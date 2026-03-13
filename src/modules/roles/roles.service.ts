@@ -30,6 +30,34 @@ const ROLE_SELECT = {
   },
 } as const;
 
+const ROLE_USERS_SELECT = {
+  id: true,
+  code: true,
+  name: true,
+  users: {
+    select: {
+      assignedAt: true,
+      user: {
+        select: {
+          id: true,
+          schoolId: true,
+          email: true,
+          phone: true,
+          firstName: true,
+          lastName: true,
+          status: true,
+          lastLoginAt: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      },
+    },
+    orderBy: {
+      assignedAt: 'desc',
+    },
+  },
+} as const;
+
 const PERMISSION_SELECT = {
   id: true,
   code: true,
@@ -74,6 +102,30 @@ export class RolesService {
     }
 
     return role;
+  }
+
+  async findUsersForRole(roleId: string) {
+    const role = await this.prisma.role.findUnique({
+      where: { id: roleId },
+      select: ROLE_USERS_SELECT,
+    });
+
+    if (!role) {
+      throw new NotFoundException({
+        code: 'ROLE_NOT_FOUND',
+        message: 'Role not found',
+      });
+    }
+
+    return {
+      roleId: role.id,
+      roleCode: role.code,
+      roleName: role.name,
+      users: role.users.map((assignment) => ({
+        assignedAt: assignment.assignedAt,
+        ...assignment.user,
+      })),
+    };
   }
 
   async updateRole(id: string, dto: UpdateRoleDto) {
@@ -298,4 +350,3 @@ export class RolesService {
     throw error;
   }
 }
-

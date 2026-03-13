@@ -1,4 +1,12 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+} from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { CreateRoleDto } from './dto/create-role.dto';
@@ -49,6 +57,13 @@ export class RolesController {
     return this.rolesService.updatePermission(id, dto);
   }
 
+  @Get(':id/users')
+  @ApiOperation({ summary: 'Inspect users assigned to a role' })
+  @ApiParam({ name: 'id', format: 'uuid' })
+  findUsersForRole(@Param('id') id: string) {
+    return this.rolesService.findUsersForRole(id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get role by id' })
   @ApiParam({ name: 'id', format: 'uuid' })
@@ -83,13 +98,19 @@ export class RolesController {
 
   @Post('users/:userId/:roleId')
   @ApiOperation({ summary: 'Assign role to user' })
-  assignRoleToUser(@Param('userId') userId: string, @Param('roleId') roleId: string) {
+  assignRoleToUser(
+    @Param('userId') userId: string,
+    @Param('roleId') roleId: string,
+  ) {
     return this.rolesService.assignRoleToUser(userId, roleId);
   }
 
   @Delete('users/:userId/:roleId')
   @ApiOperation({ summary: 'Remove role from user' })
-  removeRoleFromUser(@Param('userId') userId: string, @Param('roleId') roleId: string) {
+  removeRoleFromUser(
+    @Param('userId') userId: string,
+    @Param('roleId') roleId: string,
+  ) {
     return this.rolesService.removeRoleFromUser(userId, roleId);
   }
 }
