@@ -11,19 +11,18 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { Public } from '../../common/decorators';
-import { AuthRateLimitGuard, JwtAuthGuard } from '../../common/guards';
-import type { AuthenticatedActor } from '../../common/types/request-context.type';
+import { CurrentUserId, Public } from '../../../common/decorators';
+import { AuthRateLimitGuard, JwtAuthGuard } from '../../../common/guards';
+import type { AuthenticatedActor } from '../../../common/types/request-context.type';
+import { AuthService } from '../auth.service';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
-import { LogoutDto } from './dto/logout.dto';
 import { LogoutAllDto } from './dto/logout-all.dto';
+import { LogoutDto } from './dto/logout.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterSchoolDto } from './dto/register-school.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { AuthService } from './auth.service';
-import { CurrentUserId } from '../../common/decorators';
 
 type SessionRequest = Request & {
   ip?: string;
@@ -33,7 +32,7 @@ type SessionRequest = Request & {
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) { }
+  constructor(private readonly authService: AuthService) {}
 
   @Post('login')
   @Public()

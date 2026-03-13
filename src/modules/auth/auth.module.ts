@@ -6,16 +6,37 @@ import {
   PermissionsGuard,
   RolesGuard,
 } from '../../common/guards';
-import { getJwtAccessTokenConfig } from '../../common/security/jwt.utils';
-import { MailModule } from '../mail/mail.module';
 import { PrismaModule } from '../../common/prisma/prisma.module';
-import { AuthController } from './auth.controller';
-import { AuthIdentityService } from './auth-identity.service';
-import { AuthPasswordResetService } from './auth-password-reset.service';
-import { AuthRefreshSessionService } from './auth-refresh-session.service';
+import { AuthorizationReadRepository } from '../../common/repositories/authorization-read.repository';
+import { getJwtAccessTokenConfig } from '../../common/security/jwt.utils';
+import { ChangePasswordService } from './application/change-password.service';
+import { ConfirmPasswordResetService } from './application/confirm-password-reset.service';
+import { GetCurrentUserProfileService } from './application/get-current-user-profile.service';
+import { ListActiveSessionsService } from './application/list-active-sessions.service';
+import { LoginService } from './application/login.service';
+import { LogoutAllService } from './application/logout-all.service';
+import { LogoutService } from './application/logout.service';
+import { RefreshSessionService } from './application/refresh-session.service';
+import { RegisterSchoolService } from './application/register-school.service';
+import { RequestPasswordResetService } from './application/request-password-reset.service';
+import { RevokeSessionService } from './application/revoke-session.service';
 import { AuthService } from './auth.service';
-import { AuthSessionService } from './auth-session.service';
-import { AuthTokenService } from './auth-token.service';
+import { AuthenticatedUserProfileBuilder } from './domain/builders/authenticated-user-profile.builder';
+import { AuthIdentityPolicy } from './domain/policies/auth-identity.policy';
+import { PasswordResetPolicy } from './domain/policies/password-reset.policy';
+import { RefreshSessionPolicy } from './domain/policies/refresh-session.policy';
+import { AuthMailerService } from './infrastructure/notifications/auth-mailer.service';
+import { PasswordResetMailFactory } from './infrastructure/notifications/password-reset-mail.factory';
+import { AuthPasswordResetOtpRepository } from './infrastructure/repositories/auth-password-reset-otp.repository';
+import { AuthRoleRepository } from './infrastructure/repositories/auth-role.repository';
+import { AuthSchoolRepository } from './infrastructure/repositories/auth-school.repository';
+import { AuthSessionRepository } from './infrastructure/repositories/auth-session.repository';
+import { AuthUserRepository } from './infrastructure/repositories/auth-user.repository';
+import { AuthTokenService } from './infrastructure/security/auth-token.service';
+import { PasswordHasherService } from './infrastructure/security/password-hasher.service';
+import { TokenHasherService } from './infrastructure/security/token-hasher.service';
+import { AuthController } from './interface/auth.controller';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
   imports: [
@@ -36,15 +57,36 @@ import { AuthTokenService } from './auth-token.service';
   controllers: [AuthController],
   providers: [
     AuthService,
+    LoginService,
+    RefreshSessionService,
+    LogoutService,
+    LogoutAllService,
+    RevokeSessionService,
+    RegisterSchoolService,
+    ChangePasswordService,
+    RequestPasswordResetService,
+    ConfirmPasswordResetService,
+    GetCurrentUserProfileService,
+    ListActiveSessionsService,
     JwtAuthGuard,
     RolesGuard,
     PermissionsGuard,
     AuthRateLimitGuard,
-    AuthIdentityService,
-    AuthPasswordResetService,
-    AuthRefreshSessionService,
-    AuthSessionService,
+    AuthIdentityPolicy,
+    PasswordResetPolicy,
+    RefreshSessionPolicy,
+    AuthenticatedUserProfileBuilder,
+    AuthMailerService,
+    PasswordResetMailFactory,
+    PasswordHasherService,
+    TokenHasherService,
     AuthTokenService,
+    AuthUserRepository,
+    AuthSchoolRepository,
+    AuthRoleRepository,
+    AuthSessionRepository,
+    AuthPasswordResetOtpRepository,
+    AuthorizationReadRepository,
   ],
   exports: [
     AuthService,

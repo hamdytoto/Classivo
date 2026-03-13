@@ -7,12 +7,14 @@ import {
   Length,
   Matches,
 } from 'class-validator';
-import { ExactlyOneOf } from '../../../common/validators/exatly-one-of.validator';
+import { ExactlyOneOf } from '../../../../common/validators/exatly-one-of.validator';
+
 export class LoginDto {
   @ExactlyOneOf(['email', 'phone'], {
     message: 'Provide either email or phone, but not both',
   })
   private readonly _identifierCheck?: never;
+
   @ApiPropertyOptional({ example: 'admin@classivo.local' })
   @IsOptional()
   @IsEmail()

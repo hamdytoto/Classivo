@@ -8,7 +8,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { IS_PUBLIC_KEY, PERMISSIONS_KEY } from '../constants/auth.constants';
-import { PrismaService } from '../prisma/prisma.service';
+import { AuthorizationReadRepository } from '../repositories/authorization-read.repository';
 import type { AuthenticatedActor } from '../types/request-context.type';
 
 type RequestWithUser = Request & {
@@ -19,7 +19,7 @@ type RequestWithUser = Request & {
 export class PermissionsGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    private readonly prisma: PrismaService,
+    private readonly authorizationReadRepository: AuthorizationReadRepository,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -54,32 +54,10 @@ export class PermissionsGuard implements CanActivate {
       });
     }
 
-    const assignments = await this.prisma.userRole.findMany({
-      where: { userId: actorId },
-      select: {
-        role: {
-          select: {
-            permissions: {
-              select: {
-                permission: {
-                  select: {
-                    code: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    const userPermissions = [
-      ...new Set(
-        assignments.flatMap((assignment) =>
-          assignment.role.permissions.map((entry) => entry.permission.code),
-        ),
-      ),
-    ];
+    const userPermissions =
+      await this.authorizationReadRepository.findPermissionCodesByUserId(
+        actorId,
+      );
 
     request.user = {
       ...actor,

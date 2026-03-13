@@ -5,7 +5,7 @@ export const AUTH_USER_SELECT = {
   phone: true,
   firstName: true,
   lastName: true,
-  status: true,   
+  status: true,
   lastLoginAt: true,
   createdAt: true,
   updatedAt: true,

@@ -1,20 +1,22 @@
 import { randomInt } from 'crypto';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { UserStatus } from '@prisma/client';
+import { AUTH_ERROR_CODES } from '../auth-errors';
 
 const PASSWORD_RESET_OTP_LENGTH = 6;
 const DEFAULT_PASSWORD_RESET_OTP_TTL_MINUTES = 10;
 const GENERIC_FORGOT_PASSWORD_MESSAGE =
   'If an active account exists for that email, a password reset OTP has been sent.';
-const PASSWORD_RESET_EMAIL_SUBJECT = 'Classivo password reset OTP';
 
 type ResetRecordShape = {
+  userId: string;
+  codeHash: string;
   user?: { status: UserStatus } | null;
   expiresAt: Date;
 };
 
 @Injectable()
-export class AuthPasswordResetService {
+export class PasswordResetPolicy {
   buildForgotPasswordResponse(): { message: string } {
     return {
       message: GENERIC_FORGOT_PASSWORD_MESSAGE,
@@ -54,32 +56,8 @@ export class AuthPasswordResetService {
 
   throwInvalidOtp(): never {
     throw new BadRequestException({
-      code: 'INVALID_PASSWORD_RESET_OTP',
+      code: AUTH_ERROR_CODES.invalidPasswordResetOtp,
       message: 'Password reset OTP is invalid or expired',
     });
-  }
-
-  buildResetMailContent(otp: string, expiresAt: Date, firstName?: string) {
-    const greeting = firstName?.trim() ? `Hi ${firstName},` : 'Hi,';
-
-    return {
-      subject: PASSWORD_RESET_EMAIL_SUBJECT,
-      html: `
-      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
-        <p>${greeting}</p>
-        <p>Use the following one-time password to reset your Classivo account password:</p>
-        <p style="font-size: 28px; font-weight: 700; letter-spacing: 6px;">${otp}</p>
-        <p>This code expires at ${expiresAt.toISOString()} and can only be used once.</p>
-        <p>If you did not request this reset, you can ignore this email.</p>
-      </div>
-    `.trim(),
-      text: `${greeting}
-
-Use this one-time password to reset your Classivo password: ${otp}
-
-This code expires at ${expiresAt.toISOString()} and can only be used once.
-
-If you did not request this reset, you can ignore this email.`,
-    };
   }
 }

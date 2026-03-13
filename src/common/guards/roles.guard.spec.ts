@@ -4,7 +4,7 @@ import {
   type ExecutionContext,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { PrismaService } from '../prisma/prisma.service';
+import { AuthorizationReadRepository } from '../repositories/authorization-read.repository';
 import { RolesGuard } from './roles.guard';
 
 describe('RolesGuard', () => {
@@ -13,18 +13,16 @@ describe('RolesGuard', () => {
     getAllAndOverride: getAllAndOverrideMock,
   } as unknown as Reflector;
 
-  const findManyMock = jest.fn();
-  const prismaMock = {
-    userRole: {
-      findMany: findManyMock,
-    },
-  } as unknown as PrismaService;
+  const findRoleCodesByUserIdMock = jest.fn();
+  const authorizationReadRepositoryMock = {
+    findRoleCodesByUserId: findRoleCodesByUserIdMock,
+  } as unknown as AuthorizationReadRepository;
 
   let guard: RolesGuard;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    guard = new RolesGuard(reflectorMock, prismaMock);
+    guard = new RolesGuard(reflectorMock, authorizationReadRepositoryMock);
   });
 
   it('should allow public routes', async () => {
@@ -33,7 +31,7 @@ describe('RolesGuard', () => {
     const context = createHttpExecutionContext({});
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
-    expect(findManyMock).not.toHaveBeenCalled();
+    expect(findRoleCodesByUserIdMock).not.toHaveBeenCalled();
   });
 
   it('should reject missing authenticated actor', async () => {
@@ -52,13 +50,7 @@ describe('RolesGuard', () => {
     getAllAndOverrideMock
       .mockReturnValueOnce(false)
       .mockReturnValueOnce(['SUPER_ADMIN']);
-    findManyMock.mockResolvedValueOnce([
-      {
-        role: {
-          code: 'SUPER_ADMIN',
-        },
-      },
-    ]);
+    findRoleCodesByUserIdMock.mockResolvedValueOnce(['SUPER_ADMIN']);
 
     const request = {
       user: {
@@ -79,13 +71,7 @@ describe('RolesGuard', () => {
     getAllAndOverrideMock
       .mockReturnValueOnce(false)
       .mockReturnValueOnce(['SUPER_ADMIN']);
-    findManyMock.mockResolvedValueOnce([
-      {
-        role: {
-          code: 'TEACHER',
-        },
-      },
-    ]);
+    findRoleCodesByUserIdMock.mockResolvedValueOnce(['TEACHER']);
 
     const context = createHttpExecutionContext({
       user: {

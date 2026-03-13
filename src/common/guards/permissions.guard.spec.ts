@@ -4,7 +4,7 @@ import {
   type ExecutionContext,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { PrismaService } from '../prisma/prisma.service';
+import { AuthorizationReadRepository } from '../repositories/authorization-read.repository';
 import { PermissionsGuard } from './permissions.guard';
 
 describe('PermissionsGuard', () => {
@@ -13,18 +13,19 @@ describe('PermissionsGuard', () => {
     getAllAndOverride: getAllAndOverrideMock,
   } as unknown as Reflector;
 
-  const findManyMock = jest.fn();
-  const prismaMock = {
-    userRole: {
-      findMany: findManyMock,
-    },
-  } as unknown as PrismaService;
+  const findPermissionCodesByUserIdMock = jest.fn();
+  const authorizationReadRepositoryMock = {
+    findPermissionCodesByUserId: findPermissionCodesByUserIdMock,
+  } as unknown as AuthorizationReadRepository;
 
   let guard: PermissionsGuard;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    guard = new PermissionsGuard(reflectorMock, prismaMock);
+    guard = new PermissionsGuard(
+      reflectorMock,
+      authorizationReadRepositoryMock,
+    );
   });
 
   it('should allow public routes', async () => {
@@ -33,7 +34,7 @@ describe('PermissionsGuard', () => {
     const context = createHttpExecutionContext({});
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
-    expect(findManyMock).not.toHaveBeenCalled();
+    expect(findPermissionCodesByUserIdMock).not.toHaveBeenCalled();
   });
 
   it('should reject missing authenticated actor', async () => {
@@ -52,20 +53,9 @@ describe('PermissionsGuard', () => {
     getAllAndOverrideMock
       .mockReturnValueOnce(false)
       .mockReturnValueOnce(['roles.read', 'users.read']);
-    findManyMock.mockResolvedValueOnce([
-      {
-        role: {
-          permissions: [
-            { permission: { code: 'roles.read' } },
-            { permission: { code: 'users.read' } },
-          ],
-        },
-      },
-      {
-        role: {
-          permissions: [{ permission: { code: 'roles.read' } }],
-        },
-      },
+    findPermissionCodesByUserIdMock.mockResolvedValueOnce([
+      'roles.read',
+      'users.read',
     ]);
 
     const request = {
@@ -87,13 +77,7 @@ describe('PermissionsGuard', () => {
     getAllAndOverrideMock
       .mockReturnValueOnce(false)
       .mockReturnValueOnce(['roles.read', 'users.write']);
-    findManyMock.mockResolvedValueOnce([
-      {
-        role: {
-          permissions: [{ permission: { code: 'roles.read' } }],
-        },
-      },
-    ]);
+    findPermissionCodesByUserIdMock.mockResolvedValueOnce(['roles.read']);
 
     const context = createHttpExecutionContext({
       user: {
