@@ -10,11 +10,7 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import {
-  ApiOperation,
-  ApiParam,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../../common/guards';
 import type { AuthenticatedActor } from '../../common/types/request-context.type';
@@ -60,6 +56,14 @@ export class UsersController {
     }
 
     return this.usersService.me(userId);
+  }
+
+  @Get(':id/roles')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Inspect roles assigned to a user' })
+  @ApiParam({ name: 'id', format: 'uuid' })
+  findRoles(@Param('id') id: string) {
+    return this.usersService.findRoles(id);
   }
 
   @Get(':id')

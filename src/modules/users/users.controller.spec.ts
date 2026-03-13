@@ -10,6 +10,7 @@ describe('UsersController', () => {
     create: jest.fn(),
     findAll: jest.fn(),
     findOne: jest.fn(),
+    findRoles: jest.fn(),
     update: jest.fn(),
     me: jest.fn(),
   };
@@ -61,6 +62,35 @@ describe('UsersController', () => {
     expect(usersServiceMock.me).toHaveBeenCalledWith('user-123');
     expect(result).toEqual({
       id: 'user-123',
+    });
+  });
+
+  it('should delegate user role inspection to the service', async () => {
+    (usersServiceMock.findRoles as jest.Mock).mockResolvedValueOnce({
+      userId: 'user-123',
+      roles: [
+        {
+          id: 'role-1',
+          code: 'SCHOOL_ADMIN',
+          name: 'School Admin',
+          assignedAt: new Date('2026-03-13T00:00:00.000Z'),
+        },
+      ],
+    });
+
+    const result = await controller.findRoles('user-123');
+
+    expect(usersServiceMock.findRoles).toHaveBeenCalledWith('user-123');
+    expect(result).toEqual({
+      userId: 'user-123',
+      roles: [
+        {
+          id: 'role-1',
+          code: 'SCHOOL_ADMIN',
+          name: 'School Admin',
+          assignedAt: new Date('2026-03-13T00:00:00.000Z'),
+        },
+      ],
     });
   });
 });

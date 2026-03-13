@@ -24,6 +24,25 @@ const USER_PUBLIC_SELECT = {
   updatedAt: true,
 } as const;
 
+const USER_ROLES_SELECT = {
+  id: true,
+  roles: {
+    select: {
+      assignedAt: true,
+      role: {
+        select: {
+          id: true,
+          code: true,
+          name: true,
+        },
+      },
+    },
+    orderBy: {
+      assignedAt: 'desc',
+    },
+  },
+} as const;
+
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
@@ -149,6 +168,30 @@ export class UsersService {
 
   async me(userId: string) {
     return this.findOne(userId);
+  }
+
+  async findRoles(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: USER_ROLES_SELECT,
+    });
+
+    if (!user) {
+      throw new NotFoundException({
+        code: 'USER_NOT_FOUND',
+        message: 'User not found',
+      });
+    }
+
+    return {
+      userId: user.id,
+      roles: user.roles.map((assignment) => ({
+        id: assignment.role.id,
+        code: assignment.role.code,
+        name: assignment.role.name,
+        assignedAt: assignment.assignedAt,
+      })),
+    };
   }
 
   private ensureContactProvided(email?: string, phone?: string): void {

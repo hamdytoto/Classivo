@@ -97,4 +97,54 @@ describe('UsersService', () => {
       compareHash('Password123', createCall.data.passwordHash),
     ).resolves.toBe(true);
   });
+
+  it('should return assigned roles for an existing user', async () => {
+    (prismaMock.user.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: 'user-123',
+      roles: [
+        {
+          assignedAt: new Date('2026-03-13T00:00:00.000Z'),
+          role: {
+            id: 'role-1',
+            code: 'SCHOOL_ADMIN',
+            name: 'School Admin',
+          },
+        },
+        {
+          assignedAt: new Date('2026-03-12T00:00:00.000Z'),
+          role: {
+            id: 'role-2',
+            code: 'TEACHER',
+            name: 'Teacher',
+          },
+        },
+      ],
+    });
+
+    await expect(service.findRoles('user-123')).resolves.toEqual({
+      userId: 'user-123',
+      roles: [
+        {
+          id: 'role-1',
+          code: 'SCHOOL_ADMIN',
+          name: 'School Admin',
+          assignedAt: new Date('2026-03-13T00:00:00.000Z'),
+        },
+        {
+          id: 'role-2',
+          code: 'TEACHER',
+          name: 'Teacher',
+          assignedAt: new Date('2026-03-12T00:00:00.000Z'),
+        },
+      ],
+    });
+  });
+
+  it('should reject role inspection when the user does not exist', async () => {
+    (prismaMock.user.findUnique as jest.Mock).mockResolvedValueOnce(null);
+
+    await expect(service.findRoles('missing-user')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
 });

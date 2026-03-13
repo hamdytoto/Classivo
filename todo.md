@@ -1,6 +1,7 @@
-﻿# Classivo Backend TODO
+# Classivo Backend TODO
 
 ## 0) Foundation
+
 - [x] Define product scope for MVP only (lock Phase 1) -> see `docs/mvp-scope.md`
 - [x] Decide tenancy model: single-school or multi-tenant (`schoolId` scoped) -> multi-tenant, see `docs/tenancy-decision.md`
 - [x] Finalize core stack: NestJS + Prisma + PostgreSQL + Redis + BullMQ + S3 -> see `docs/stack-decision.md`
@@ -12,6 +13,7 @@
 - [x] Add health check endpoint (`/health`) -> see `src/health/health.controller.ts`, `src/main.ts`, `docs/health.md`
 
 ## 1) Project Setup
+
 - [x] Bootstrap module folders under `src/modules/*` -> created base domain folders under `src/modules`
 - [x] Create `common` primitives (guards, decorators, filters, interceptors) -> see `src/common/decorators`, `src/common/guards`, `src/common/filters`, `src/common/interceptors`
 - [x] Set up Prisma schema + migrations folder -> see `prisma/schema.prisma` and `prisma/migrations/`
@@ -23,6 +25,7 @@
 - [x] Add CI checks (lint, test, build) -> see `.github/workflows/ci.yml` and `package.json`
 
 ## 2) Auth + Access (Sprint 1)
+
 - [x] Implement `users` module (create/find/update/me) -> see `src/modules/users/*`, `src/common/prisma/*`, `docs/sprint-1/bullet-1-users-module-plan.md`
 - [x] Implement `roles` + `permissions` entities -> see `src/modules/roles/*`, `docs/sprint-1/bullet-2-roles-permissions-plan.md`
 - [x] Implement `auth/login` (email/phone + password) -> see `src/modules/auth/*`, `docs/sprint-1/bullet-3-auth-login-plan.md`
@@ -35,9 +38,11 @@
 - [x] Seed baseline roles: SuperAdmin, SchoolAdmin, Teacher, Student, Parent, Support -> see `prisma/seed.js`, `prisma/seed-data.js`, `docs/sprint-1/bullet-10-baseline-roles-seed-plan.md`
 
 ### Sprint 1 revision
+
 Sprint 1 should remain an identity-and-access sprint. Do not pull academic domain CRUD into it. The goal is to leave Sprint 1 with production-usable authentication, authorization, session control, and admin user management.
 
 ### Recommended additional Sprint 1 endpoints
+
 - [x] Add `POST /auth/register-school` to create a school plus its initial owner/admin account -> see `src/modules/auth/*` and `docs/sprint-1/bullet-11-register-school-plan.md`
 - [x] Add `GET /auth/me` to return the authenticated actor with roles and permissions resolved from the token/database -> see `src/modules/auth/*` and `docs/sprint-1/bullet-12-auth-me-plan.md`
 - [x] Add `GET /auth/sessions` to list active refresh-token sessions for the current user -> see `src/modules/auth/*` and `docs/sprint-1/bullet-13-auth-sessions-plan.md`
@@ -46,11 +51,12 @@ Sprint 1 should remain an identity-and-access sprint. Do not pull academic domai
 - [x] Add `POST /auth/change-password` for authenticated password rotation -> see `src/modules/auth/*` and `docs/sprint-1/bullet-16-auth-change-password-plan.md`
 - [x] Add `POST /auth/forgot-password` to create a password-reset request placeholder or full flow -> see `src/modules/auth/*`, `src/modules/mail/*`, `prisma/schema.prisma`, and `docs/sprint-1/bullet-17-auth-forgot-reset-password-otp-plan.md`
 - [x] Add `POST /auth/reset-password` to complete password reset with a token -> see `src/modules/auth/*`, `src/modules/mail/*`, `prisma/schema.prisma`, and `docs/sprint-1/bullet-17-auth-forgot-reset-password-otp-plan.md`
-- [ ] Add `GET /users/:id/roles` to inspect a user's assigned roles
+- [x] Add `GET /users/:id/roles` to inspect a user's assigned roles -> see `src/modules/users/*` and `docs/sprint-1/bullet-18-user-roles-inspection-plan.md`
 - [ ] Add `GET /users/:id/permissions` to inspect effective permissions resolved through roles
 - [ ] Add `GET /roles/:id/users` to list users assigned to a role
 
 ### Recommended Sprint 1 enhancements
+
 - [ ] Define `register-school` rules clearly: who can call it, which default role is assigned, and whether school creation is public or controlled by a platform admin
 - [ ] Add uniqueness rules for school slug/subdomain, owner email, and owner phone during `register-school`
 - [ ] Add transactional school bootstrap logic: create school, owner account, initial role assignment, and baseline defaults atomically
@@ -65,6 +71,7 @@ Sprint 1 should remain an identity-and-access sprint. Do not pull academic domai
 - [ ] Add Swagger response examples for auth errors, forbidden responses, and validation failures
 
 ### Explicitly defer from Sprint 1
+
 - [ ] Schools, courses, classes, and enrollments CRUD
 - [ ] Full school administration CRUD beyond `register-school`
 - [ ] Lessons, materials, and file uploads
@@ -72,6 +79,7 @@ Sprint 1 should remain an identity-and-access sprint. Do not pull academic domai
 - [ ] Parent linkage and student-facing academic endpoints
 
 ## 3) Schools, Courses, Classes, Enrollments (Sprint 2)
+
 - [ ] Implement `schools` module
 - [ ] Implement `classes` module
 - [ ] Implement `courses` module
@@ -81,6 +89,7 @@ Sprint 1 should remain an identity-and-access sprint. Do not pull academic domai
 - [ ] Add list/detail endpoints with pagination and filtering
 
 ## 4) Lessons, Materials, Files (Sprint 3)
+
 - [ ] Implement `lessons` module
 - [ ] Implement `materials` support for lesson sections/topics
 - [ ] Implement `files` upload metadata model
@@ -89,6 +98,7 @@ Sprint 1 should remain an identity-and-access sprint. Do not pull academic domai
 - [ ] Restrict file access by role + course membership
 
 ## 5) Assignments, Submissions, Grades (Sprint 4)
+
 - [ ] Implement `assignments` module (create/publish/deadline)
 - [ ] Implement `submissions` module (text/files/status)
 - [ ] Implement grading basics in `grades` module
@@ -97,6 +107,7 @@ Sprint 1 should remain an identity-and-access sprint. Do not pull academic domai
 - [ ] Add endpoints for teacher grading workflow
 
 ## 6) Quizzes and Exams (Sprint 5)
+
 - [ ] Implement `quizzes` module
 - [ ] Implement question and choice models
 - [ ] Implement quiz submission and auto-evaluation basics
@@ -105,6 +116,7 @@ Sprint 1 should remain an identity-and-access sprint. Do not pull academic domai
 - [ ] Add student result retrieval endpoints
 
 ## 7) Attendance, Schedule, Announcements (Sprint 6)
+
 - [ ] Implement `attendance` module
 - [ ] Add class attendance marking endpoint
 - [ ] Add attendance summary query endpoints
@@ -113,6 +125,7 @@ Sprint 1 should remain an identity-and-access sprint. Do not pull academic domai
 - [ ] Scope schedule and announcements by class/course/school
 
 ## 8) Notifications + Realtime (Sprint 7)
+
 - [ ] Implement `notifications` module (in-app)
 - [ ] Add email queue + worker (BullMQ)
 - [ ] Create websocket gateway for real-time notifications
@@ -120,6 +133,7 @@ Sprint 1 should remain an identity-and-access sprint. Do not pull academic domai
 - [ ] Add notification preferences (optional MVP+)
 
 ## 9) Reports + Audit + Hardening (Sprint 8)
+
 - [ ] Implement `reports` module (student progress, attendance, completion)
 - [ ] Move heavy reports to background jobs
 - [ ] Add caching for frequent report queries
@@ -129,6 +143,7 @@ Sprint 1 should remain an identity-and-access sprint. Do not pull academic domai
 - [ ] Add missing integration tests for critical flows
 
 ## 10) Cross-Cutting Security Checklist
+
 - [ ] Helmet enabled
 - [ ] CORS allowlist configured
 - [ ] DTO validation for all write endpoints
@@ -138,6 +153,7 @@ Sprint 1 should remain an identity-and-access sprint. Do not pull academic domai
 - [ ] Secrets management for all environments
 
 ## 11) Testing Checklist
+
 - [ ] Unit tests for services with core business logic
 - [ ] E2E tests for auth flow (login/refresh/logout)
 - [ ] E2E tests for enrollment boundaries
@@ -147,6 +163,7 @@ Sprint 1 should remain an identity-and-access sprint. Do not pull academic domai
 - [ ] Minimum coverage threshold set in CI
 
 ## 12) Deployment Checklist
+
 - [ ] Production-ready env templates
 - [ ] DB migration pipeline in CI/CD
 - [ ] Backup and restore playbook for PostgreSQL
@@ -156,6 +173,7 @@ Sprint 1 should remain an identity-and-access sprint. Do not pull academic domai
 - [ ] Staging environment parity with production
 
 ## 13) Phase 2 Backlog (After MVP)
+
 - [ ] Parent accounts and parent-student linkage
 - [ ] Chat/discussion module
 - [ ] Search across courses, lessons, assignments
@@ -164,6 +182,7 @@ Sprint 1 should remain an identity-and-access sprint. Do not pull academic domai
 - [ ] Extended audit tooling and admin console
 
 ## 14) Phase 3 Backlog (Advanced)
+
 - [ ] Live classes integration
 - [ ] Real-time classroom collaboration updates
 - [ ] Certificates generation service
