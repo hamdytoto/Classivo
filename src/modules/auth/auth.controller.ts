@@ -14,12 +14,14 @@ import type { Request } from 'express';
 import { Public } from '../../common/decorators';
 import { AuthRateLimitGuard, JwtAuthGuard } from '../../common/guards';
 import type { AuthenticatedActor } from '../../common/types/request-context.type';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { LogoutDto } from './dto/logout.dto';
 import { LogoutAllDto } from './dto/logout-all.dto';
-import { ChangePasswordDto } from './dto/change-password.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterSchoolDto } from './dto/register-school.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { AuthService } from './auth.service';
 import { CurrentUserId } from '../../common/decorators';
 
@@ -101,6 +103,31 @@ export class AuthController {
       dto.refreshToken,
       this.extractSessionContext(request),
     );
+  }
+
+  @Post('forgot-password')
+  @Public()
+  @UseGuards(AuthRateLimitGuard)
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Request a password reset OTP to be sent to the user email',
+  })
+  forgotPassword(@Body() dto: ForgotPasswordDto, @Req() request: SessionRequest) {
+    return this.authService.forgotPassword(
+      dto.email,
+      this.extractSessionContext(request),
+    );
+  }
+
+  @Post('reset-password')
+  @Public()
+  @UseGuards(AuthRateLimitGuard)
+  @HttpCode(204)
+  @ApiOperation({
+    summary: 'Reset password using email and OTP verification',
+  })
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    await this.authService.resetPassword(dto.email, dto.otp, dto.newPassword);
   }
 
   @Post('logout')

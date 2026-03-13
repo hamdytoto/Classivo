@@ -17,6 +17,8 @@ describe('AuthController', () => {
   const logoutMock = jest.fn();
   const logoutAllMock = jest.fn();
   const changePasswordMock = jest.fn();
+  const forgotPasswordMock = jest.fn();
+  const resetPasswordMock = jest.fn();
   const authServiceMock = {
     login: loginMock,
     me: meMock,
@@ -27,6 +29,8 @@ describe('AuthController', () => {
     logout: logoutMock,
     logoutAll: logoutAllMock,
     changePassword: changePasswordMock,
+    forgotPassword: forgotPasswordMock,
+    resetPassword: resetPasswordMock,
   };
 
   beforeEach(async () => {
@@ -246,6 +250,51 @@ describe('AuthController', () => {
       'user-123',
       'OldPassword123',
       'NewPassword456',
+    );
+    expect(result).toBeUndefined();
+  });
+
+  it('should delegate forgot-password to auth service', async () => {
+    forgotPasswordMock.mockResolvedValueOnce({
+      message:
+        'If an active account exists for that email, a password reset OTP has been sent.',
+    });
+
+    const result = await controller.forgotPassword(
+      {
+        email: 'john@classivo.dev',
+      } as never,
+      {
+        ip: '127.0.0.1',
+        get: jest.fn().mockReturnValue('jest'),
+      } as never,
+    );
+
+    expect(forgotPasswordMock).toHaveBeenCalledWith('john@classivo.dev', {
+      ipAddress: '127.0.0.1',
+      userAgent: 'jest',
+    });
+    expect(result).toEqual({
+      message:
+        'If an active account exists for that email, a password reset OTP has been sent.',
+    });
+  });
+
+  it('should delegate reset-password to auth service', async () => {
+    resetPasswordMock.mockResolvedValueOnce(undefined);
+
+    const result = await controller.resetPassword(
+      {
+        email: 'john@classivo.dev',
+        otp: '123456',
+        newPassword: 'NewPassword456!',
+      } as never,
+    );
+
+    expect(resetPasswordMock).toHaveBeenCalledWith(
+      'john@classivo.dev',
+      '123456',
+      'NewPassword456!',
     );
     expect(result).toBeUndefined();
   });

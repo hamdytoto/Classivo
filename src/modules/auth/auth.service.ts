@@ -1,6 +1,5 @@
 import { randomUUID } from 'crypto';
 import {
-  BadRequestException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -9,43 +8,40 @@ import {
 import { UserStatus } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { compareHash, hash } from '../../common/security/hash.utils';
-import {
-  hashToken,
-} from '../../common/security/jwt.utils';
+import { hashToken } from '../../common/security/jwt.utils';
+import { MailService } from '../mail/mail.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterSchoolDto } from './dto/register-school.dto';
-import {
-  SessionContext,
-} from './auth.types';
+import { SessionContext } from './auth.types';
 import {
   AUTH_ME_SELECT,
   AUTH_USER_SELECT,
   SCHOOL_PUBLIC_SELECT,
 } from './auth.constants';
+import { AuthIdentityService } from './auth-identity.service';
+import { AuthPasswordResetService } from './auth-password-reset.service';
+import { AuthRefreshSessionService } from './auth-refresh-session.service';
 import { AuthSessionService } from './auth-session.service';
 import { AuthTokenService } from './auth-token.service';
 import { handlePrismaError } from '../../common/prisma/prisma-error.handler';
+
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly authIdentityService: AuthIdentityService,
+    private readonly authPasswordResetService: AuthPasswordResetService,
+    private readonly authRefreshSessionService: AuthRefreshSessionService,
     private readonly authSessionService: AuthSessionService,
     private readonly authTokenService: AuthTokenService,
-  ) { }
+    private readonly mailService: MailService,
+  ) {}
 
   async login(dto: LoginDto, sessionContext?: SessionContext) {
-    const hasEmail = Boolean(dto.email?.trim());
-    const hasPhone = Boolean(dto.phone?.trim());
-
-    if (hasEmail === hasPhone) {
-      throw new BadRequestException({
-        code: 'INVALID_LOGIN_IDENTIFIER',
-        message: 'Provide either email or phone, but not both',
-      });
-    }
+    const identifier = this.authIdentityService.resolveLoginIdentifier(dto);
 
     const user = await this.prisma.user.findUnique({
-      where: dto.email ? { email: dto.email } : { phone: dto.phone },
+      where: identifier,
       select: {
         id: true,
         status: true,
@@ -60,12 +56,7 @@ export class AuthService {
       });
     }
 
-    if (user.status !== UserStatus.ACTIVE) {
-      throw new UnauthorizedException({
-        code: 'ACCOUNT_INACTIVE',
-        message: 'Account is not active',
-      });
-    }
+    this.authIdentityService.assertUserIsActive(user.status);
 
     const authenticatedUser = await this.prisma.user.update({
       where: { id: user.id },
@@ -73,13 +64,18 @@ export class AuthService {
       select: AUTH_USER_SELECT,
     });
     const sessionId = randomUUID();
-    const authTokens = await this.authTokenService.issueTokenPair(authenticatedUser, sessionId);
+    const authTokens = await this.authTokenService.issueTokenPair(
+      authenticatedUser,
+      sessionId,
+    );
 
     await this.authSessionService.createSession({
       sessionId,
       userId: authenticatedUser.id,
       refreshToken: authTokens.refreshToken,
-      expiresAt: this.authTokenService.buildExpiryDate(authTokens.refreshExpiresIn),
+      expiresAt: this.authTokenService.buildExpiryDate(
+        authTokens.refreshExpiresIn,
+      ),
       sessionContext,
     });
 
@@ -102,29 +98,7 @@ export class AuthService {
       });
     }
 
-    const roles = user.roles.map((assignment) => assignment.role.code);
-    const permissions = [
-      ...new Set(
-        user.roles.flatMap((assignment) =>
-          assignment.role.permissions.map((entry) => entry.permission.code),
-        ),
-      ),
-    ];
-
-    return {
-      id: user.id,
-      schoolId: user.schoolId,
-      email: user.email,
-      phone: user.phone,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      status: user.status,
-      lastLoginAt: user.lastLoginAt,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-      roles,
-      permissions,
-    };
+    return this.authIdentityService.buildAuthenticatedActorProfile(user);
   }
 
   async sessions(actorId: string) {
@@ -151,7 +125,9 @@ export class AuthService {
     dto: RegisterSchoolDto,
     sessionContext?: SessionContext,
   ) {
-    const schoolCode = this.normalizeSchoolCode(dto.schoolCode);
+    const schoolCode = this.authIdentityService.normalizeSchoolCode(
+      dto.schoolCode,
+    );
     const schoolAdminRole = await this.prisma.role.findUnique({
       where: { code: 'SCHOOL_ADMIN' },
       select: {
@@ -184,7 +160,7 @@ export class AuthService {
         const user = await tx.user.create({
           data: {
             schoolId: school.id,
-            email: dto.email.trim().toLowerCase(),
+            email: this.authIdentityService.normalizeEmail(dto.email),
             phone: dto.phone?.trim() || null,
             passwordHash,
             firstName: dto.firstName.trim(),
@@ -201,7 +177,10 @@ export class AuthService {
           },
         });
 
-        const authTokens = await this.authTokenService.issueTokenPair(user, sessionId);
+        const authTokens = await this.authTokenService.issueTokenPair(
+          user,
+          sessionId,
+        );
 
         await tx.session.create({
           data: {
@@ -210,7 +189,9 @@ export class AuthService {
             refreshTokenHash: hashToken(authTokens.refreshToken),
             ipAddress: sessionContext?.ipAddress ?? null,
             userAgent: sessionContext?.userAgent ?? null,
-            expiresAt: this.authTokenService.buildExpiryDate(authTokens.refreshExpiresIn),
+            expiresAt: this.authTokenService.buildExpiryDate(
+              authTokens.refreshExpiresIn,
+            ),
           },
         });
 
@@ -227,69 +208,26 @@ export class AuthService {
   }
 
   async refresh(refreshToken: string, sessionContext?: SessionContext) {
-    const payload = await this.authTokenService.verifyRefreshToken(refreshToken);
-    const session = await this.prisma.session.findUnique({
-      where: { id: payload.sid },
-      select: {
-        id: true,
-        userId: true,
-        refreshTokenHash: true,
-        expiresAt: true,
-        revokedAt: true,
-        user: {
-          select: AUTH_USER_SELECT,
-        },
+    const session = await this.authRefreshSessionService.validateRefreshSession(
+      refreshToken,
+      {
+        includeUser: true,
+        revokeOnInactiveUser: true,
       },
-    });
+    );
 
-    if (!session || session.userId !== payload.sub) {
-      throw new UnauthorizedException({
-        code: 'INVALID_REFRESH_TOKEN',
-        message: 'Refresh token is invalid',
-      });
-    }
+    const authTokens = await this.authTokenService.issueTokenPair(
+      session.user,
+      session.id,
+    );
 
-    if (session.revokedAt) {
-      throw new UnauthorizedException({
-        code: 'REFRESH_TOKEN_REVOKED',
-        message: 'Refresh token has been revoked',
-      });
-    }
-
-    if (session.expiresAt.getTime() <= Date.now()) {
-      await this.authSessionService.revokeSession(session.id);
-      throw new UnauthorizedException({
-        code: 'REFRESH_TOKEN_EXPIRED',
-        message: 'Refresh token has expired',
-      });
-    }
-
-    if (session.refreshTokenHash !== hashToken(refreshToken)) {
-      await this.authSessionService.revokeSession(session.id);
-      throw new UnauthorizedException({
-        code: 'REFRESH_TOKEN_REUSED',
-        message: 'Refresh token reuse detected',
-      });
-    }
-
-    if (session.user.status !== UserStatus.ACTIVE) {
-      await this.authSessionService.revokeSession(session.id);
-      throw new UnauthorizedException({
-        code: 'ACCOUNT_INACTIVE',
-        message: 'Account is not active',
-      });
-    }
-
-    const authTokens = await this.authTokenService.issueTokenPair(session.user, session.id);
-
-    await this.prisma.session.update({
-      where: { id: session.id },
-      data: {
-        refreshTokenHash: hashToken(authTokens.refreshToken),
-        expiresAt: this.authTokenService.buildExpiryDate(authTokens.refreshExpiresIn),
-        ipAddress: sessionContext?.ipAddress ?? null,
-        userAgent: sessionContext?.userAgent ?? null,
-      },
+    await this.authSessionService.rotateSession({
+      sessionId: session.id,
+      refreshToken: authTokens.refreshToken,
+      expiresAt: this.authTokenService.buildExpiryDate(
+        authTokens.refreshExpiresIn,
+      ),
+      sessionContext,
     });
 
     return {
@@ -299,48 +237,12 @@ export class AuthService {
   }
 
   async logout(refreshToken: string, actorId?: string): Promise<void> {
-    const payload = await this.authTokenService.verifyRefreshToken(refreshToken);
-
-    if (actorId && actorId !== payload.sub) {
-      throw new UnauthorizedException({
-        code: 'SESSION_OWNERSHIP_MISMATCH',
-        message: 'Refresh token does not belong to the authenticated user',
-      });
-    }
-
-    const session = await this.prisma.session.findUnique({
-      where: { id: payload.sid },
-      select: {
-        id: true,
-        userId: true,
-        refreshTokenHash: true,
-        expiresAt: true,
-        revokedAt: true,
+    const session = await this.authRefreshSessionService.validateRefreshSession(
+      refreshToken,
+      {
+        actorId,
       },
-    });
-
-    if (!session || session.userId !== payload.sub) {
-      throw new UnauthorizedException({
-        code: 'INVALID_REFRESH_TOKEN',
-        message: 'Refresh token is invalid',
-      });
-    }
-
-    if (session.refreshTokenHash !== hashToken(refreshToken)) {
-      await this.authSessionService.revokeSession(session.id);
-      throw new UnauthorizedException({
-        code: 'REFRESH_TOKEN_REUSED',
-        message: 'Refresh token reuse detected',
-      });
-    }
-
-    if (session.expiresAt.getTime() <= Date.now()) {
-      await this.authSessionService.revokeSession(session.id);
-      throw new UnauthorizedException({
-        code: 'REFRESH_TOKEN_EXPIRED',
-        message: 'Refresh token has expired',
-      });
-    }
+    );
 
     await this.authSessionService.revokeSession(session.id);
   }
@@ -350,48 +252,12 @@ export class AuthService {
     includeCurrent: boolean,
     actorId?: string,
   ): Promise<{ revokedCount: number }> {
-    const payload = await this.authTokenService.verifyRefreshToken(refreshToken);
-
-    if (actorId && actorId !== payload.sub) {
-      throw new UnauthorizedException({
-        code: 'SESSION_OWNERSHIP_MISMATCH',
-        message: 'Refresh token does not belong to the authenticated user',
-      });
-    }
-
-    const session = await this.prisma.session.findUnique({
-      where: { id: payload.sid },
-      select: {
-        id: true,
-        userId: true,
-        refreshTokenHash: true,
-        expiresAt: true,
-        revokedAt: true,
+    const session = await this.authRefreshSessionService.validateRefreshSession(
+      refreshToken,
+      {
+        actorId,
       },
-    });
-
-    if (!session || session.userId !== payload.sub) {
-      throw new UnauthorizedException({
-        code: 'INVALID_REFRESH_TOKEN',
-        message: 'Refresh token is invalid',
-      });
-    }
-
-    if (session.refreshTokenHash !== hashToken(refreshToken)) {
-      await this.authSessionService.revokeSession(session.id);
-      throw new UnauthorizedException({
-        code: 'REFRESH_TOKEN_REUSED',
-        message: 'Refresh token reuse detected',
-      });
-    }
-
-    if (session.expiresAt.getTime() <= Date.now()) {
-      await this.authSessionService.revokeSession(session.id);
-      throw new UnauthorizedException({
-        code: 'REFRESH_TOKEN_EXPIRED',
-        message: 'Refresh token has expired',
-      });
-    }
+    );
 
     const excludeSessionId = includeCurrent ? undefined : session.id;
     const revokedCount = await this.authSessionService.revokeMultipleSessions(
@@ -423,12 +289,7 @@ export class AuthService {
       });
     }
 
-    if (user.status !== UserStatus.ACTIVE) {
-      throw new UnauthorizedException({
-        code: 'ACCOUNT_INACTIVE',
-        message: 'Account is not active',
-      });
-    }
+    this.authIdentityService.assertUserIsActive(user.status);
 
     const isCurrentPasswordValid = await compareHash(
       currentPassword,
@@ -445,7 +306,6 @@ export class AuthService {
     const newPasswordHash = await hash(newPassword);
 
     await this.prisma.$transaction(async (tx) => {
-      // Update password
       await tx.user.update({
         where: { id: userId },
         data: {
@@ -454,7 +314,6 @@ export class AuthService {
         },
       });
 
-      // Revoke all active sessions to force re-login
       await tx.session.updateMany({
         where: {
           userId,
@@ -467,7 +326,149 @@ export class AuthService {
     });
   }
 
-  private normalizeSchoolCode(code: string): string {
-    return code.trim().toUpperCase();
+  async forgotPassword(
+    email: string,
+    sessionContext?: SessionContext,
+  ): Promise<{ message: string }> {
+    const normalizedEmail = this.authIdentityService.normalizeEmail(email);
+    const user = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        status: true,
+      },
+    });
+
+    const response =
+      this.authPasswordResetService.buildForgotPasswordResponse();
+
+    if (!user || !user.email || user.status !== UserStatus.ACTIVE) {
+      return response;
+    }
+
+    const userEmail = user.email;
+
+    const otp = this.authPasswordResetService.generateOtp();
+    const otpHash = await hash(otp);
+    const expiresAt = this.authPasswordResetService.buildOtpExpiryDate();
+    const mailContent = this.authPasswordResetService.buildResetMailContent(
+      otp,
+      expiresAt,
+      user.firstName,
+    );
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.passwordResetOtp.updateMany({
+        where: {
+          userId: user.id,
+          consumedAt: null,
+        },
+        data: {
+          consumedAt: new Date(),
+        },
+      });
+
+      await tx.passwordResetOtp.create({
+        data: {
+          userId: user.id,
+          email: userEmail,
+          codeHash: otpHash,
+          expiresAt,
+          requestedIpAddress: sessionContext?.ipAddress ?? null,
+          requestedUserAgent: sessionContext?.userAgent ?? null,
+        },
+      });
+    });
+
+    try {
+      await this.mailService.sendMail({
+        to: userEmail,
+        name: user.firstName,
+        subject: mailContent.subject,
+        html: mailContent.html,
+        text: mailContent.text,
+      });
+    } catch (error) {
+      await this.prisma.passwordResetOtp.deleteMany({
+        where: {
+          userId: user.id,
+          consumedAt: null,
+          codeHash: otpHash,
+        },
+      });
+
+      throw error;
+    }
+
+    return response;
+  }
+
+  async resetPassword(
+    email: string,
+    otp: string,
+    newPassword: string,
+  ): Promise<void> {
+    const normalizedEmail = this.authIdentityService.normalizeEmail(email);
+    const resetRecord = await this.prisma.passwordResetOtp.findFirst({
+      where: {
+        email: normalizedEmail,
+        consumedAt: null,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      select: {
+        id: true,
+        userId: true,
+        codeHash: true,
+        expiresAt: true,
+        user: {
+          select: {
+            id: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    this.authPasswordResetService.assertResetRecordIsUsable(resetRecord);
+
+    const isOtpValid = await compareHash(otp, resetRecord.codeHash);
+    if (!isOtpValid) {
+      this.authPasswordResetService.throwInvalidOtp();
+    }
+
+    const newPasswordHash = await hash(newPassword);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: resetRecord.userId },
+        data: {
+          passwordHash: newPasswordHash,
+        },
+      });
+
+      await tx.session.updateMany({
+        where: {
+          userId: resetRecord.userId,
+          revokedAt: null,
+        },
+        data: {
+          revokedAt: new Date(),
+        },
+      });
+
+      await tx.passwordResetOtp.updateMany({
+        where: {
+          userId: resetRecord.userId,
+          consumedAt: null,
+        },
+        data: {
+          consumedAt: new Date(),
+        },
+      });
+    });
   }
 }

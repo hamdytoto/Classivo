@@ -11,6 +11,10 @@ import { Prisma, UserStatus } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { hash } from '../../common/security/hash.utils';
 import { hashToken } from '../../common/security/jwt.utils';
+import { MailService } from '../mail/mail.service';
+import { AuthIdentityService } from './auth-identity.service';
+import { AuthPasswordResetService } from './auth-password-reset.service';
+import { AuthRefreshSessionService } from './auth-refresh-session.service';
 import { AuthSessionService } from './auth-session.service';
 import { AuthService } from './auth.service';
 import { AuthTokenService } from './auth-token.service';
@@ -32,6 +36,10 @@ describe('AuthService', () => {
   const sessionFindManyMock = jest.fn();
   const sessionUpdateMock = jest.fn();
   const sessionUpdateManyMock = jest.fn();
+  const passwordResetOtpCreateMock = jest.fn();
+  const passwordResetOtpUpdateManyMock = jest.fn();
+  const passwordResetOtpFindFirstMock = jest.fn();
+  const passwordResetOtpDeleteManyMock = jest.fn();
   const prismaMock = {
     $transaction: prismaTransactionMock,
     user: {
@@ -54,6 +62,12 @@ describe('AuthService', () => {
       update: sessionUpdateMock,
       updateMany: sessionUpdateManyMock,
     },
+    passwordResetOtp: {
+      create: passwordResetOtpCreateMock,
+      updateMany: passwordResetOtpUpdateManyMock,
+      findFirst: passwordResetOtpFindFirstMock,
+      deleteMany: passwordResetOtpDeleteManyMock,
+    },
   } as unknown as PrismaService;
 
   const signAsyncMock = jest.fn();
@@ -62,12 +76,17 @@ describe('AuthService', () => {
     signAsync: signAsyncMock,
     verifyAsync: verifyAsyncMock,
   } as unknown as JwtService;
+  const sendMailMock = jest.fn();
+  const mailServiceMock = {
+    sendMail: sendMailMock,
+  } as unknown as MailService;
 
   beforeEach(async () => {
     process.env.JWT_ACCESS_SECRET = 'test-access-secret';
     process.env.JWT_ACCESS_TTL = '15m';
     process.env.JWT_REFRESH_SECRET = 'test-refresh-secret';
     process.env.JWT_REFRESH_TTL = '7d';
+    process.env.PASSWORD_RESET_OTP_TTL_MINUTES = '10';
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -80,13 +99,21 @@ describe('AuthService', () => {
           provide: JwtService,
           useValue: jwtServiceMock,
         },
+        {
+          provide: MailService,
+          useValue: mailServiceMock,
+        },
+        AuthIdentityService,
+        AuthPasswordResetService,
+        AuthRefreshSessionService,
         AuthSessionService,
         AuthTokenService,
       ],
     }).compile();
 
+    (prismaMock as any).$transaction = prismaTransactionMock;
     service = module.get<AuthService>(AuthService);
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   it('should be defined', () => {
@@ -120,6 +147,190 @@ describe('AuthService', () => {
         password: 'Password123',
       }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('should return a generic forgot-password response when the user does not exist', async () => {
+    userFindUniqueMock.mockResolvedValueOnce(null);
+
+    await expect(
+      service.forgotPassword('missing@classivo.dev', {
+        ipAddress: '127.0.0.1',
+        userAgent: 'jest',
+      }),
+    ).resolves.toEqual({
+      message:
+        'If an active account exists for that email, a password reset OTP has been sent.',
+    });
+
+    expect(passwordResetOtpUpdateManyMock).not.toHaveBeenCalled();
+    expect(sendMailMock).not.toHaveBeenCalled();
+  });
+
+  it('should create and email a password reset OTP for an active user', async () => {
+    userFindUniqueMock.mockResolvedValueOnce({
+      id: 'user-123',
+      email: 'john@classivo.dev',
+      firstName: 'John',
+      status: UserStatus.ACTIVE,
+    });
+    prismaTransactionMock.mockImplementation(async (callback) =>
+      callback({
+        passwordResetOtp: {
+          updateMany: passwordResetOtpUpdateManyMock,
+          create: passwordResetOtpCreateMock,
+        },
+      }),
+    );
+    passwordResetOtpUpdateManyMock.mockResolvedValueOnce({ count: 1 });
+    passwordResetOtpCreateMock.mockResolvedValueOnce({ id: 'otp-123' });
+    sendMailMock.mockResolvedValueOnce({
+      success: true,
+    });
+
+    const result = await service.forgotPassword('john@classivo.dev', {
+      ipAddress: '127.0.0.1',
+      userAgent: 'jest',
+    });
+
+    expect(passwordResetOtpUpdateManyMock).toHaveBeenCalledWith({
+      where: {
+        userId: 'user-123',
+        consumedAt: null,
+      },
+      data: {
+        consumedAt: anyDate,
+      },
+    });
+    expect(passwordResetOtpCreateMock).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: 'user-123',
+        email: 'john@classivo.dev',
+        codeHash: anyString,
+        requestedIpAddress: '127.0.0.1',
+        requestedUserAgent: 'jest',
+      }) as unknown,
+    });
+    expect(sendMailMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'john@classivo.dev',
+        name: 'John',
+        subject: 'Classivo password reset OTP',
+        html: expect.stringContaining('Classivo account password'),
+        text: expect.stringContaining('one-time password'),
+      }),
+    );
+    expect(result).toEqual({
+      message:
+        'If an active account exists for that email, a password reset OTP has been sent.',
+    });
+  });
+
+  it('should reset password with a valid OTP and revoke active sessions', async () => {
+    const otpHash = await hash('123456');
+    prismaTransactionMock.mockImplementation(async (callback) => {
+      return callback({
+        user: {
+          update: jest.fn().mockResolvedValueOnce({ id: 'user-123' }),
+        },
+        session: {
+          updateMany: sessionUpdateManyMock,
+        },
+        passwordResetOtp: {
+          updateMany: passwordResetOtpUpdateManyMock,
+        },
+      });
+    });
+
+    passwordResetOtpFindFirstMock.mockResolvedValueOnce({
+      id: 'otp-123',
+      userId: 'user-123',
+      codeHash: otpHash,
+      expiresAt: new Date(Date.now() + 60_000),
+      user: {
+        id: 'user-123',
+        status: UserStatus.ACTIVE,
+      },
+    });
+    sessionUpdateManyMock.mockResolvedValueOnce({ count: 2 });
+    passwordResetOtpUpdateManyMock.mockResolvedValueOnce({ count: 1 });
+
+    await expect(
+      service.resetPassword('john@classivo.dev', '123456', 'NewPassword456!'),
+    ).resolves.toBeUndefined();
+
+    expect(passwordResetOtpFindFirstMock).toHaveBeenCalledWith({
+      where: {
+        email: 'john@classivo.dev',
+        consumedAt: null,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      select: {
+        id: true,
+        userId: true,
+        codeHash: true,
+        expiresAt: true,
+        user: {
+          select: {
+            id: true,
+            status: true,
+          },
+        },
+      },
+    });
+    expect(sessionUpdateManyMock).toHaveBeenCalledWith({
+      where: {
+        userId: 'user-123',
+        revokedAt: null,
+      },
+      data: {
+        revokedAt: anyDate,
+      },
+    });
+    expect(passwordResetOtpUpdateManyMock).toHaveBeenCalledWith({
+      where: {
+        userId: 'user-123',
+        consumedAt: null,
+      },
+      data: {
+        consumedAt: anyDate,
+      },
+    });
+  });
+
+  it('should reject password reset when OTP is invalid', async () => {
+    passwordResetOtpFindFirstMock.mockResolvedValueOnce({
+      id: 'otp-123',
+      userId: 'user-123',
+      codeHash: await hash('654321'),
+      expiresAt: new Date(Date.now() + 60_000),
+      user: {
+        id: 'user-123',
+        status: UserStatus.ACTIVE,
+      },
+    });
+
+    await expect(
+      service.resetPassword('john@classivo.dev', '123456', 'NewPassword456!'),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('should reject password reset when OTP is expired', async () => {
+    passwordResetOtpFindFirstMock.mockResolvedValueOnce({
+      id: 'otp-123',
+      userId: 'user-123',
+      codeHash: await hash('123456'),
+      expiresAt: new Date(Date.now() - 60_000),
+      user: {
+        id: 'user-123',
+        status: UserStatus.ACTIVE,
+      },
+    });
+
+    await expect(
+      service.resetPassword('john@classivo.dev', '123456', 'NewPassword456!'),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('should issue access and refresh tokens on successful login', async () => {
@@ -430,7 +641,7 @@ describe('AuthService', () => {
       code: 'SCHOOL_ADMIN',
       name: 'School Admin',
     });
-    prismaTransactionMock.mockImplementationOnce(
+    prismaTransactionMock.mockImplementation(
       async (
         callback: (tx: typeof transactionClient) => Promise<unknown>,
       ): Promise<unknown> => callback(transactionClient),
@@ -543,7 +754,7 @@ describe('AuthService', () => {
       code: 'SCHOOL_ADMIN',
       name: 'School Admin',
     });
-    prismaTransactionMock.mockRejectedValueOnce(
+    prismaTransactionMock.mockRejectedValue(
       new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
         code: 'P2002',
         clientVersion: 'test',
@@ -828,11 +1039,7 @@ describe('AuthService', () => {
       .spyOn(authSessionService, 'revokeMultipleSessions')
       .mockResolvedValueOnce(0);
 
-    const result = await service.logoutAll(
-      'refresh-token',
-      false,
-      'user-123',
-    );
+    const result = await service.logoutAll('refresh-token', false, 'user-123');
 
     expect(result).toEqual({ revokedCount: 0 });
     revokeMultipleSpy.mockRestore();
@@ -848,20 +1055,16 @@ describe('AuthService', () => {
       status: UserStatus.ACTIVE,
     });
 
-    const transactionMock = jest.fn().mockImplementation(async (callback) => {
+    prismaTransactionMock.mockImplementation(async (callback) => {
       return callback({
         user: {
           update: jest.fn().mockResolvedValueOnce({ id: 'user-123' }),
         },
         session: {
-          updateMany: jest
-            .fn()
-            .mockResolvedValueOnce({ count: 3 }),
+          updateMany: jest.fn().mockResolvedValueOnce({ count: 3 }),
         },
       });
     });
-
-    (prismaMock.$transaction as jest.Mock) = transactionMock;
 
     await expect(
       service.changePassword('user-123', 'OldPassword123', 'NewPassword456'),
@@ -904,7 +1107,11 @@ describe('AuthService', () => {
     userFindUniqueMock.mockResolvedValueOnce(null);
 
     await expect(
-      service.changePassword('missing-user', 'OldPassword123', 'NewPassword456'),
+      service.changePassword(
+        'missing-user',
+        'OldPassword123',
+        'NewPassword456',
+      ),
     ).rejects.toBeInstanceOf(NotFoundException);
 
     expect(userFindUniqueMock).toHaveBeenCalledWith({

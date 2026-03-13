@@ -43,9 +43,9 @@ Sprint 1 should remain an identity-and-access sprint. Do not pull academic domai
 - [x] Add `GET /auth/sessions` to list active refresh-token sessions for the current user -> see `src/modules/auth/*` and `docs/sprint-1/bullet-13-auth-sessions-plan.md`
 - [x] Add `DELETE /auth/sessions/:sessionId` to revoke a specific session/device -> see `src/modules/auth/*` and `docs/sprint-1/bullet-14-auth-revoke-session-plan.md`
 - [x] Add `POST /auth/logout-all` to revoke all active sessions except the current one, or all sessions if preferred
-- [ ] Add `POST /auth/change-password` for authenticated password rotation
-- [ ] Add `POST /auth/forgot-password` to create a password-reset request placeholder or full flow
-- [ ] Add `POST /auth/reset-password` to complete password reset with a token
+- [x] Add `POST /auth/change-password` for authenticated password rotation -> see `src/modules/auth/*` and `docs/sprint-1/bullet-16-auth-change-password-plan.md`
+- [x] Add `POST /auth/forgot-password` to create a password-reset request placeholder or full flow -> see `src/modules/auth/*`, `src/modules/mail/*`, `prisma/schema.prisma`, and `docs/sprint-1/bullet-17-auth-forgot-reset-password-otp-plan.md`
+- [x] Add `POST /auth/reset-password` to complete password reset with a token -> see `src/modules/auth/*`, `src/modules/mail/*`, `prisma/schema.prisma`, and `docs/sprint-1/bullet-17-auth-forgot-reset-password-otp-plan.md`
 - [ ] Add `GET /users/:id/roles` to inspect a user's assigned roles
 - [ ] Add `GET /users/:id/permissions` to inspect effective permissions resolved through roles
 - [ ] Add `GET /roles/:id/users` to list users assigned to a role
