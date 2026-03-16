@@ -3,6 +3,7 @@ import {
   IsEmail,
   IsOptional,
   IsString,
+  IsStrongPassword,
   Length,
   Matches,
 } from 'class-validator';
@@ -36,6 +37,7 @@ export class RegisterSchoolDto {
   @ApiProperty({ minLength: 8, maxLength: 72, example: 'ChangeMe123!' })
   @IsString()
   @Length(8, 72)
+  @IsStrongPassword()
   password!: string;
 
   @ApiProperty({ example: 'John' })
