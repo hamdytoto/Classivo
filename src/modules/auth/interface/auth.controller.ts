@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { CurrentUserId, Public } from '../../../common/decorators';
+import { CurrentUserId, Public, Roles } from '../../../common/decorators';
 import { AuthRateLimitGuard, JwtAuthGuard } from '../../../common/guards';
 import type { AuthenticatedActor } from '../../../common/types/request-context.type';
 import { AuthService } from '../auth.service';
@@ -57,9 +57,7 @@ export class AuthController {
       this.extractSessionContext(request),
     );
   }
-
   @Get('me')
-  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({
     summary:
