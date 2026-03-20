@@ -157,7 +157,7 @@ describe('RolesService', () => {
         limit: 10,
         code: 'ADMIN',
         sortBy: 'name',
-        sortOrder: 'asc',
+        sortOrder:'asc',
       }),
     ).resolves.toEqual({
       data: [

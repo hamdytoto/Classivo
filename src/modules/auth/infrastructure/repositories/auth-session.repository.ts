@@ -5,6 +5,7 @@ import {
   resolvePaginationParams,
 } from '../../../../common/pagination/pagination.util';
 import { PrismaService } from '../../../../common/prisma/prisma.service';
+import { buildActiveSessionWhere } from '../../filters/session-list.filter';
 import { ListActiveSessionsQueryDto } from '../../interface/dto/list-active-sessions-query.dto';
 
 export type AuthSessionRecord = NonNullable<
@@ -81,23 +82,7 @@ export class AuthSessionRepository {
     const pagination = resolvePaginationParams(query);
     const sortBy = query.sortBy ?? 'updatedAt';
     const sortOrder = query.sortOrder ?? 'desc';
-    const where: Prisma.SessionWhereInput = {
-      userId,
-      revokedAt: null,
-    };
-
-    if (query.ipAddress) {
-      where.ipAddress = {
-        contains: query.ipAddress,
-      };
-    }
-
-    if (query.userAgent) {
-      where.userAgent = {
-        contains: query.userAgent,
-        mode: 'insensitive',
-      };
-    }
+    const where = buildActiveSessionWhere(userId, query);
 
     const [sessions, total] = await this.prisma.$transaction([
       this.prisma.session.findMany({

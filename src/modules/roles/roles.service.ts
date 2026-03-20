@@ -16,6 +16,11 @@ import { CreateRoleDto } from './dto/create-role.dto';
 import { FindPermissionsQueryDto } from './dto/find-permissions-query.dto';
 import { FindRolesQueryDto } from './dto/find-roles-query.dto';
 import { FindRoleUsersQueryDto } from './dto/find-role-users-query.dto';
+import {
+  buildPermissionWhere,
+  buildRoleWhere,
+  filterRoleUsers,
+} from './filters/role-list.filter';
 import { UpdatePermissionDto } from './dto/update-permission.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 
@@ -93,21 +98,7 @@ export class RolesService {
     const pagination = resolvePaginationParams(query);
     const sortBy = query.sortBy ?? 'createdAt';
     const sortOrder = query.sortOrder ?? 'desc';
-    const where: Prisma.RoleWhereInput = {};
-
-    if (query.code) {
-      where.code = {
-        contains: query.code,
-        mode: 'insensitive',
-      };
-    }
-
-    if (query.name) {
-      where.name = {
-        contains: query.name,
-        mode: 'insensitive',
-      };
-    }
+    const where = buildRoleWhere(query);
 
     const [roles, total] = await this.prisma.$transaction([
       this.prisma.role.findMany({
@@ -158,35 +149,7 @@ export class RolesService {
       assignedAt: assignment.assignedAt,
       ...assignment.user,
     }));
-
-    if (query.schoolId) {
-      users = users.filter((user) => user.schoolId === query.schoolId);
-    }
-
-    if (query.status) {
-      users = users.filter((user) => user.status === query.status);
-    }
-
-    if (query.email) {
-      const emailFilter = query.email.toLowerCase();
-      users = users.filter((user) =>
-        (user.email ?? '').toLowerCase().includes(emailFilter),
-      );
-    }
-
-    if (query.firstName) {
-      const firstNameFilter = query.firstName.toLowerCase();
-      users = users.filter((user) =>
-        user.firstName.toLowerCase().includes(firstNameFilter),
-      );
-    }
-
-    if (query.lastName) {
-      const lastNameFilter = query.lastName.toLowerCase();
-      users = users.filter((user) =>
-        user.lastName.toLowerCase().includes(lastNameFilter),
-      );
-    }
+    users = filterRoleUsers(users, query);
 
     users.sort((left, right) =>
       this.compareValues(left[sortBy], right[sortBy], sortOrder),
@@ -227,21 +190,7 @@ export class RolesService {
     const pagination = resolvePaginationParams(query);
     const sortBy = query.sortBy ?? 'createdAt';
     const sortOrder = query.sortOrder ?? 'desc';
-    const where: Prisma.PermissionWhereInput = {};
-
-    if (query.code) {
-      where.code = {
-        contains: query.code,
-        mode: 'insensitive',
-      };
-    }
-
-    if (query.name) {
-      where.name = {
-        contains: query.name,
-        mode: 'insensitive',
-      };
-    }
+    const where = buildPermissionWhere(query);
 
     const [permissions, total] = await this.prisma.$transaction([
       this.prisma.permission.findMany({
