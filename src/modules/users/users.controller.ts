@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
+import { Permissions } from '../../common/decorators';
 import { JwtAuthGuard } from '../../common/guards';
 import type { AuthenticatedActor } from '../../common/types/request-context.type';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -30,12 +31,14 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
+  @Permissions('users.manage')
   @ApiOperation({ summary: 'Create user' })
   create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);
   }
 
   @Get()
+  @Permissions('users.read')
   @ApiOperation({ summary: 'Find/list users' })
   findAll(@Query() query: FindUsersQueryDto) {
     return this.usersService.findAll(query);
@@ -59,6 +62,7 @@ export class UsersController {
   }
 
   @Get(':id/roles')
+  @Permissions('users.read')
   @ApiOperation({ summary: 'Inspect roles assigned to a user' })
   @ApiParam({ name: 'id', format: 'uuid' })
   findRoles(@Param('id') id: string) {
@@ -66,6 +70,7 @@ export class UsersController {
   }
 
   @Get(':id/permissions')
+  @Permissions('users.read')
   @ApiOperation({ summary: 'Inspect effective permissions for a user' })
   @ApiParam({ name: 'id', format: 'uuid' })
   findPermissions(@Param('id') id: string) {
@@ -73,6 +78,7 @@ export class UsersController {
   }
 
   @Get(':id')
+  @Permissions('users.read')
   @ApiOperation({ summary: 'Find user by id' })
   @ApiParam({ name: 'id', format: 'uuid' })
   findOne(@Param('id') id: string) {
@@ -80,6 +86,7 @@ export class UsersController {
   }
 
   @Patch(':id')
+  @Permissions('users.manage')
   @ApiOperation({ summary: 'Update user by id' })
   @ApiParam({ name: 'id', format: 'uuid' })
   update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {

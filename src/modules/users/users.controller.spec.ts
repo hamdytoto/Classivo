@@ -1,6 +1,7 @@
 import { JwtService } from '@nestjs/jwt';
 import { Reflector } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
+import { PERMISSIONS_KEY } from '../../common/constants/auth.constants';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 
@@ -47,6 +48,33 @@ describe('UsersController', () => {
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
+  });
+
+  it('should protect sensitive user routes with permission metadata', () => {
+    expect(
+      Reflect.getMetadata(PERMISSIONS_KEY, UsersController.prototype.create),
+    ).toEqual(['users.manage']);
+    expect(
+      Reflect.getMetadata(PERMISSIONS_KEY, UsersController.prototype.findAll),
+    ).toEqual(['users.read']);
+    expect(
+      Reflect.getMetadata(PERMISSIONS_KEY, UsersController.prototype.findRoles),
+    ).toEqual(['users.read']);
+    expect(
+      Reflect.getMetadata(
+        PERMISSIONS_KEY,
+        UsersController.prototype.findPermissions,
+      ),
+    ).toEqual(['users.read']);
+    expect(
+      Reflect.getMetadata(PERMISSIONS_KEY, UsersController.prototype.findOne),
+    ).toEqual(['users.read']);
+    expect(
+      Reflect.getMetadata(PERMISSIONS_KEY, UsersController.prototype.update),
+    ).toEqual(['users.manage']);
+    expect(
+      Reflect.getMetadata(PERMISSIONS_KEY, UsersController.prototype.me),
+    ).toBeUndefined();
   });
 
   it('should resolve current user from request.user', async () => {

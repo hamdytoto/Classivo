@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ROLES_KEY } from '../../common/constants/auth.constants';
 import { RolesController } from './roles.controller';
 import { RolesService } from './roles.service';
 
@@ -37,6 +38,12 @@ describe('RolesController', () => {
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
+  });
+
+  it('should require the SUPER_ADMIN role for all role routes', () => {
+    expect(Reflect.getMetadata(ROLES_KEY, RolesController)).toEqual([
+      'SUPER_ADMIN',
+    ]);
   });
 
   it('should delegate role-user inspection to the service', async () => {

@@ -8,6 +8,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { Roles } from '../../common/decorators';
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdatePermissionDto } from './dto/update-permission.dto';
@@ -15,6 +16,7 @@ import { UpdateRoleDto } from './dto/update-role.dto';
 import { RolesService } from './roles.service';
 
 @ApiTags('roles')
+@Roles('SUPER_ADMIN')
 @Controller('roles')
 export class RolesController {
   constructor(private readonly rolesService: RolesService) {}

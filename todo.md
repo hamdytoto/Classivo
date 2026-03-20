@@ -57,10 +57,10 @@ Sprint 1 should remain an identity-and-access sprint. Do not pull academic domai
 
 ### Recommended Sprint 1 enhancements
 
-- [ ] Define `register-school` rules clearly: who can call it, which default role is assigned, and whether school creation is public or controlled by a platform admin
-- [ ] Add uniqueness rules for school slug/subdomain, owner email, and owner phone during `register-school`
-- [ ] Add transactional school bootstrap logic: create school, owner account, initial role assignment, and baseline defaults atomically
-- [ ] Add onboarding defaults during `register-school` such as academic year placeholder, default settings, and seeded school-scoped roles if required
+- [x] Define `register-school` rules clearly: who can call it, which default role is assigned, and whether school creation is public or controlled by a platform admin
+- [x] Add uniqueness rules for school slug/subdomain, owner email, and owner phone during `register-school`
+- [x] Add transactional school bootstrap logic: create school, owner account, initial role assignment, and baseline defaults atomically
+- [x] Add onboarding defaults during `register-school` such as academic year placeholder, default settings, and seeded school-scoped roles if required
 - [ ] Protect `roles` and sensitive `users` endpoints with role/permission checks, not JWT only
 - [ ] Add pagination, filtering, and sorting conventions to all list endpoints
 - [ ] Add consistent audit events for login, refresh, logout, password change, role assignment, and permission changes
