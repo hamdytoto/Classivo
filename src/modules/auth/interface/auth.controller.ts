@@ -43,7 +43,7 @@ export class AuthController {
   }
 
   @Post('register-school')
-  @Public()
+  @Roles('SUPER_ADMIN')
   @UseGuards(AuthRateLimitGuard)
   @ApiOperation({
     summary: 'Register a school and bootstrap its initial school-admin account',
