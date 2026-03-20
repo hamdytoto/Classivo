@@ -6,7 +6,8 @@ import {
   SortOrder,
 } from '../../../common/dto/pagination-query.dto';
 
-export const USER_SORT_FIELDS = [
+export const ROLE_USER_SORT_FIELDS = [
+  'assignedAt',
   'createdAt',
   'updatedAt',
   'firstName',
@@ -14,9 +15,9 @@ export const USER_SORT_FIELDS = [
   'email',
 ] as const;
 
-export type UserSortField = (typeof USER_SORT_FIELDS)[number];
+export type RoleUserSortField = (typeof ROLE_USER_SORT_FIELDS)[number];
 
-export class FindUsersQueryDto extends PaginationSortQueryDto {
+export class FindRoleUsersQueryDto extends PaginationSortQueryDto {
   @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()
   @IsUUID()
@@ -35,12 +36,17 @@ export class FindUsersQueryDto extends PaginationSortQueryDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  phone?: string;
+  firstName?: string;
 
-  @ApiPropertyOptional({ enum: USER_SORT_FIELDS, default: 'createdAt' })
+  @ApiPropertyOptional()
   @IsOptional()
-  @IsIn(USER_SORT_FIELDS)
-  sortBy?: UserSortField;
+  @IsString()
+  lastName?: string;
+
+  @ApiPropertyOptional({ enum: ROLE_USER_SORT_FIELDS, default: 'assignedAt' })
+  @IsOptional()
+  @IsIn(ROLE_USER_SORT_FIELDS)
+  sortBy?: RoleUserSortField;
 
   @ApiPropertyOptional({ enum: SortOrder, default: SortOrder.desc })
   @IsOptional()

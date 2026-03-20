@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import {
+  buildPaginatedResult,
+  resolvePaginationParams,
+} from '../../../../common/pagination/pagination.util';
 import { PrismaService } from '../../../../common/prisma/prisma.service';
+import { ListActiveSessionsQueryDto } from '../../interface/dto/list-active-sessions-query.dto';
 
 export type AuthSessionRecord = NonNullable<
   Awaited<ReturnType<AuthSessionRepository['findById']>>
@@ -69,22 +74,50 @@ export class AuthSessionRepository {
     });
   }
 
-  async listActiveByUserId(userId: string) {
-    return this.prisma.session.findMany({
-      where: {
-        userId,
-        revokedAt: null,
-      },
-      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
-      select: {
-        id: true,
-        ipAddress: true,
-        userAgent: true,
-        expiresAt: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+  async listActiveByUserId(
+    userId: string,
+    query: ListActiveSessionsQueryDto = {},
+  ) {
+    const pagination = resolvePaginationParams(query);
+    const sortBy = query.sortBy ?? 'updatedAt';
+    const sortOrder = query.sortOrder ?? 'desc';
+    const where: Prisma.SessionWhereInput = {
+      userId,
+      revokedAt: null,
+    };
+
+    if (query.ipAddress) {
+      where.ipAddress = {
+        contains: query.ipAddress,
+      };
+    }
+
+    if (query.userAgent) {
+      where.userAgent = {
+        contains: query.userAgent,
+        mode: 'insensitive',
+      };
+    }
+
+    const [sessions, total] = await this.prisma.$transaction([
+      this.prisma.session.findMany({
+        where,
+        skip: pagination.skip,
+        take: pagination.limit,
+        orderBy: { [sortBy]: sortOrder },
+        select: {
+          id: true,
+          ipAddress: true,
+          userAgent: true,
+          expiresAt: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+      this.prisma.session.count({ where }),
+    ]);
+
+    return buildPaginatedResult(sessions, pagination, total);
   }
 
   async rotate(

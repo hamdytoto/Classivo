@@ -51,7 +51,7 @@ describe('RolesController', () => {
       roleId: 'role-1',
       roleCode: 'SCHOOL_ADMIN',
       roleName: 'School Admin',
-      users: [
+      data: [
         {
           id: 'user-1',
           schoolId: 'school-1',
@@ -66,16 +66,22 @@ describe('RolesController', () => {
           assignedAt: new Date('2026-03-14T00:00:00.000Z'),
         },
       ],
+      meta: {
+        page: 1,
+        limit: 20,
+        total: 1,
+        totalPages: 1,
+      },
     });
 
-    const result = await controller.findUsersForRole('role-1');
+    const result = await controller.findUsersForRole('role-1', {} as never);
 
-    expect(rolesServiceMock.findUsersForRole).toHaveBeenCalledWith('role-1');
+    expect(rolesServiceMock.findUsersForRole).toHaveBeenCalledWith('role-1', {});
     expect(result).toEqual({
       roleId: 'role-1',
       roleCode: 'SCHOOL_ADMIN',
       roleName: 'School Admin',
-      users: [
+      data: [
         {
           id: 'user-1',
           schoolId: 'school-1',
@@ -90,6 +96,12 @@ describe('RolesController', () => {
           assignedAt: new Date('2026-03-14T00:00:00.000Z'),
         },
       ],
+      meta: {
+        page: 1,
+        limit: 20,
+        total: 1,
+        totalPages: 1,
+      },
     });
   });
 });

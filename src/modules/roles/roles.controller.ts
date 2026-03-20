@@ -6,11 +6,15 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../../common/decorators';
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { CreateRoleDto } from './dto/create-role.dto';
+import { FindPermissionsQueryDto } from './dto/find-permissions-query.dto';
+import { FindRolesQueryDto } from './dto/find-roles-query.dto';
+import { FindRoleUsersQueryDto } from './dto/find-role-users-query.dto';
 import { UpdatePermissionDto } from './dto/update-permission.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { RolesService } from './roles.service';
@@ -29,8 +33,8 @@ export class RolesController {
 
   @Get()
   @ApiOperation({ summary: 'List roles' })
-  findAllRoles() {
-    return this.rolesService.findAllRoles();
+  findAllRoles(@Query() query: FindRolesQueryDto) {
+    return this.rolesService.findAllRoles(query);
   }
 
   @Post('permissions')
@@ -41,8 +45,8 @@ export class RolesController {
 
   @Get('permissions')
   @ApiOperation({ summary: 'List permissions' })
-  findAllPermissions() {
-    return this.rolesService.findAllPermissions();
+  findAllPermissions(@Query() query: FindPermissionsQueryDto) {
+    return this.rolesService.findAllPermissions(query);
   }
 
   @Get('permissions/:id')
@@ -62,8 +66,8 @@ export class RolesController {
   @Get(':id/users')
   @ApiOperation({ summary: 'Inspect users assigned to a role' })
   @ApiParam({ name: 'id', format: 'uuid' })
-  findUsersForRole(@Param('id') id: string) {
-    return this.rolesService.findUsersForRole(id);
+  findUsersForRole(@Param('id') id: string, @Query() query: FindRoleUsersQueryDto) {
+    return this.rolesService.findUsersForRole(id, query);
   }
 
   @Get(':id')

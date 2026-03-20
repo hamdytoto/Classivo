@@ -12,6 +12,7 @@ import { RequestPasswordResetService } from './application/request-password-rese
 import { RevokeSessionService } from './application/revoke-session.service';
 import { SessionContext } from './domain/auth.types';
 import { LoginDto } from './interface/dto/login.dto';
+import { ListActiveSessionsQueryDto } from './interface/dto/list-active-sessions-query.dto';
 import { RegisterSchoolDto } from './interface/dto/register-school.dto';
 
 @Injectable()
@@ -78,7 +79,7 @@ export class AuthService {
     return this.getCurrentUserProfileService.execute(actorId);
   }
 
-  sessions(actorId: string) {
-    return this.listActiveSessionsService.execute(actorId);
+  sessions(actorId: string, query: ListActiveSessionsQueryDto = {}) {
+    return this.listActiveSessionsService.execute(actorId, query);
   }
 }

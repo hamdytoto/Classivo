@@ -6,6 +6,7 @@ import {
   HttpCode,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -18,6 +19,7 @@ import { AuthService } from '../auth.service';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
+import { ListActiveSessionsQueryDto } from './dto/list-active-sessions-query.dto';
 import { LogoutAllDto } from './dto/logout-all.dto';
 import { LogoutDto } from './dto/logout.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
@@ -73,8 +75,11 @@ export class AuthController {
   @ApiOperation({
     summary: 'List active refresh-token sessions for the authenticated user',
   })
-  sessions(@CurrentUserId() actorId: string) {
-    return this.authService.sessions(actorId);
+  sessions(
+    @CurrentUserId() actorId: string,
+    @Query() query: ListActiveSessionsQueryDto,
+  ) {
+    return this.authService.sessions(actorId, query);
   }
 
   @Delete('sessions/:sessionId')

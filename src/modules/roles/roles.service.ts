@@ -5,9 +5,17 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import {
+  buildPaginatedResult,
+  paginateArray,
+  resolvePaginationParams,
+} from '../../common/pagination/pagination.util';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { CreateRoleDto } from './dto/create-role.dto';
+import { FindPermissionsQueryDto } from './dto/find-permissions-query.dto';
+import { FindRolesQueryDto } from './dto/find-roles-query.dto';
+import { FindRoleUsersQueryDto } from './dto/find-role-users-query.dto';
 import { UpdatePermissionDto } from './dto/update-permission.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 
@@ -81,11 +89,38 @@ export class RolesService {
     }
   }
 
-  async findAllRoles() {
-    return this.prisma.role.findMany({
-      orderBy: { createdAt: 'desc' },
-      select: ROLE_SELECT,
-    });
+  async findAllRoles(query: FindRolesQueryDto = {}) {
+    const pagination = resolvePaginationParams(query);
+    const sortBy = query.sortBy ?? 'createdAt';
+    const sortOrder = query.sortOrder ?? 'desc';
+    const where: Prisma.RoleWhereInput = {};
+
+    if (query.code) {
+      where.code = {
+        contains: query.code,
+        mode: 'insensitive',
+      };
+    }
+
+    if (query.name) {
+      where.name = {
+        contains: query.name,
+        mode: 'insensitive',
+      };
+    }
+
+    const [roles, total] = await this.prisma.$transaction([
+      this.prisma.role.findMany({
+        where,
+        skip: pagination.skip,
+        take: pagination.limit,
+        orderBy: { [sortBy]: sortOrder },
+        select: ROLE_SELECT,
+      }),
+      this.prisma.role.count({ where }),
+    ]);
+
+    return buildPaginatedResult(roles, pagination, total);
   }
 
   async findOneRole(id: string) {
@@ -104,7 +139,7 @@ export class RolesService {
     return role;
   }
 
-  async findUsersForRole(roleId: string) {
+  async findUsersForRole(roleId: string, query: FindRoleUsersQueryDto = {}) {
     const role = await this.prisma.role.findUnique({
       where: { id: roleId },
       select: ROLE_USERS_SELECT,
@@ -117,14 +152,51 @@ export class RolesService {
       });
     }
 
+    const sortBy = query.sortBy ?? 'assignedAt';
+    const sortOrder = query.sortOrder ?? 'desc';
+    let users = role.users.map((assignment) => ({
+      assignedAt: assignment.assignedAt,
+      ...assignment.user,
+    }));
+
+    if (query.schoolId) {
+      users = users.filter((user) => user.schoolId === query.schoolId);
+    }
+
+    if (query.status) {
+      users = users.filter((user) => user.status === query.status);
+    }
+
+    if (query.email) {
+      const emailFilter = query.email.toLowerCase();
+      users = users.filter((user) =>
+        (user.email ?? '').toLowerCase().includes(emailFilter),
+      );
+    }
+
+    if (query.firstName) {
+      const firstNameFilter = query.firstName.toLowerCase();
+      users = users.filter((user) =>
+        user.firstName.toLowerCase().includes(firstNameFilter),
+      );
+    }
+
+    if (query.lastName) {
+      const lastNameFilter = query.lastName.toLowerCase();
+      users = users.filter((user) =>
+        user.lastName.toLowerCase().includes(lastNameFilter),
+      );
+    }
+
+    users.sort((left, right) =>
+      this.compareValues(left[sortBy], right[sortBy], sortOrder),
+    );
+
     return {
       roleId: role.id,
       roleCode: role.code,
       roleName: role.name,
-      users: role.users.map((assignment) => ({
-        assignedAt: assignment.assignedAt,
-        ...assignment.user,
-      })),
+      ...paginateArray(users, resolvePaginationParams(query)),
     };
   }
 
@@ -151,11 +223,38 @@ export class RolesService {
     }
   }
 
-  async findAllPermissions() {
-    return this.prisma.permission.findMany({
-      orderBy: { createdAt: 'desc' },
-      select: PERMISSION_SELECT,
-    });
+  async findAllPermissions(query: FindPermissionsQueryDto = {}) {
+    const pagination = resolvePaginationParams(query);
+    const sortBy = query.sortBy ?? 'createdAt';
+    const sortOrder = query.sortOrder ?? 'desc';
+    const where: Prisma.PermissionWhereInput = {};
+
+    if (query.code) {
+      where.code = {
+        contains: query.code,
+        mode: 'insensitive',
+      };
+    }
+
+    if (query.name) {
+      where.name = {
+        contains: query.name,
+        mode: 'insensitive',
+      };
+    }
+
+    const [permissions, total] = await this.prisma.$transaction([
+      this.prisma.permission.findMany({
+        where,
+        skip: pagination.skip,
+        take: pagination.limit,
+        orderBy: { [sortBy]: sortOrder },
+        select: PERMISSION_SELECT,
+      }),
+      this.prisma.permission.count({ where }),
+    ]);
+
+    return buildPaginatedResult(permissions, pagination, total);
   }
 
   async findOnePermission(id: string) {
@@ -348,5 +447,19 @@ export class RolesService {
     }
 
     throw error;
+  }
+
+  private compareValues(
+    left: Date | string | null | undefined,
+    right: Date | string | null | undefined,
+    sortOrder: 'asc' | 'desc',
+  ) {
+    const direction = sortOrder === 'asc' ? 1 : -1;
+
+    if (left instanceof Date && right instanceof Date) {
+      return (left.getTime() - right.getTime()) * direction;
+    }
+
+    return String(left ?? '').localeCompare(String(right ?? '')) * direction;
   }
 }

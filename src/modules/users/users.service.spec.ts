@@ -123,7 +123,7 @@ describe('UsersService', () => {
 
     await expect(service.findRoles('user-123')).resolves.toEqual({
       userId: 'user-123',
-      roles: [
+      data: [
         {
           id: 'role-1',
           code: 'SCHOOL_ADMIN',
@@ -137,6 +137,12 @@ describe('UsersService', () => {
           assignedAt: new Date('2026-03-12T00:00:00.000Z'),
         },
       ],
+      meta: {
+        page: 1,
+        limit: 20,
+        total: 2,
+        totalPages: 1,
+      },
     });
   });
 
@@ -196,7 +202,7 @@ describe('UsersService', () => {
 
     await expect(service.findPermissions('user-123')).resolves.toEqual({
       userId: 'user-123',
-      permissions: [
+      data: [
         {
           id: 'permission-1',
           code: 'users.read',
@@ -227,7 +233,79 @@ describe('UsersService', () => {
           ],
         },
       ],
+      meta: {
+        page: 1,
+        limit: 20,
+        total: 2,
+        totalPages: 1,
+      },
     });
+  });
+
+  it('should paginate and sort users with shared list metadata', async () => {
+    (prismaMock.user.findMany as jest.Mock).mockResolvedValueOnce([
+      {
+        id: 'user-1',
+        schoolId: 'school-1',
+        email: 'admin@classivo.dev',
+        phone: null,
+        firstName: 'Admin',
+        lastName: 'User',
+        status: 'ACTIVE',
+        lastLoginAt: null,
+        createdAt: new Date('2026-03-13T00:00:00.000Z'),
+        updatedAt: new Date('2026-03-13T00:00:00.000Z'),
+      },
+    ]);
+    (prismaMock.user.count as jest.Mock).mockResolvedValueOnce(1);
+    (prismaMock.$transaction as jest.Mock).mockImplementationOnce((operations) =>
+      Promise.all(operations),
+    );
+
+    await expect(
+      service.findAll({
+        page: 2,
+        limit: 5,
+        email: 'classivo.dev',
+        sortBy: 'email',
+        sortOrder: 'asc',
+      }),
+    ).resolves.toEqual({
+      data: [
+        {
+          id: 'user-1',
+          schoolId: 'school-1',
+          email: 'admin@classivo.dev',
+          phone: null,
+          firstName: 'Admin',
+          lastName: 'User',
+          status: 'ACTIVE',
+          lastLoginAt: null,
+          createdAt: new Date('2026-03-13T00:00:00.000Z'),
+          updatedAt: new Date('2026-03-13T00:00:00.000Z'),
+        },
+      ],
+      meta: {
+        page: 2,
+        limit: 5,
+        total: 1,
+        totalPages: 1,
+      },
+    });
+
+    expect(prismaMock.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skip: 5,
+        take: 5,
+        orderBy: { email: 'asc' },
+        where: {
+          email: {
+            contains: 'classivo.dev',
+            mode: 'insensitive',
+          },
+        },
+      }),
+    );
   });
 
   it('should reject permission inspection when the user does not exist', async () => {

@@ -186,15 +186,38 @@ describe('AuthController', () => {
   });
 
   it('should delegate auth/sessions to auth service', async () => {
-    sessionsMock.mockResolvedValueOnce([
-      { id: 'session-1' },
-      { id: 'session-2' },
-    ]);
+    sessionsMock.mockResolvedValueOnce({
+      data: [{ id: 'session-1' }, { id: 'session-2' }],
+      meta: {
+        page: 1,
+        limit: 20,
+        total: 2,
+        totalPages: 1,
+      },
+    });
 
-    const result = await controller.sessions('user-123');
+    const result = await controller.sessions('user-123', {
+      page: 1,
+      limit: 20,
+      sortBy: 'updatedAt',
+      sortOrder: 'desc',
+    } as never);
 
-    expect(sessionsMock).toHaveBeenCalledWith('user-123');
-    expect(result).toEqual([{ id: 'session-1' }, { id: 'session-2' }]);
+    expect(sessionsMock).toHaveBeenCalledWith('user-123', {
+      page: 1,
+      limit: 20,
+      sortBy: 'updatedAt',
+      sortOrder: 'desc',
+    });
+    expect(result).toEqual({
+      data: [{ id: 'session-1' }, { id: 'session-2' }],
+      meta: {
+        page: 1,
+        limit: 20,
+        total: 2,
+        totalPages: 1,
+      },
+    });
   });
 
   it('should delegate session revocation to auth service', async () => {

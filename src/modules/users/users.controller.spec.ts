@@ -97,7 +97,7 @@ describe('UsersController', () => {
   it('should delegate user role inspection to the service', async () => {
     (usersServiceMock.findRoles as jest.Mock).mockResolvedValueOnce({
       userId: 'user-123',
-      roles: [
+      data: [
         {
           id: 'role-1',
           code: 'SCHOOL_ADMIN',
@@ -105,14 +105,20 @@ describe('UsersController', () => {
           assignedAt: new Date('2026-03-13T00:00:00.000Z'),
         },
       ],
+      meta: {
+        page: 1,
+        limit: 20,
+        total: 1,
+        totalPages: 1,
+      },
     });
 
-    const result = await controller.findRoles('user-123');
+    const result = await controller.findRoles('user-123', {} as never);
 
-    expect(usersServiceMock.findRoles).toHaveBeenCalledWith('user-123');
+    expect(usersServiceMock.findRoles).toHaveBeenCalledWith('user-123', {});
     expect(result).toEqual({
       userId: 'user-123',
-      roles: [
+      data: [
         {
           id: 'role-1',
           code: 'SCHOOL_ADMIN',
@@ -120,13 +126,19 @@ describe('UsersController', () => {
           assignedAt: new Date('2026-03-13T00:00:00.000Z'),
         },
       ],
+      meta: {
+        page: 1,
+        limit: 20,
+        total: 1,
+        totalPages: 1,
+      },
     });
   });
 
   it('should delegate user permission inspection to the service', async () => {
     (usersServiceMock.findPermissions as jest.Mock).mockResolvedValueOnce({
       userId: 'user-123',
-      permissions: [
+      data: [
         {
           id: 'permission-1',
           code: 'users.read',
@@ -140,14 +152,20 @@ describe('UsersController', () => {
           ],
         },
       ],
+      meta: {
+        page: 1,
+        limit: 20,
+        total: 1,
+        totalPages: 1,
+      },
     });
 
-    const result = await controller.findPermissions('user-123');
+    const result = await controller.findPermissions('user-123', {} as never);
 
-    expect(usersServiceMock.findPermissions).toHaveBeenCalledWith('user-123');
+    expect(usersServiceMock.findPermissions).toHaveBeenCalledWith('user-123', {});
     expect(result).toEqual({
       userId: 'user-123',
-      permissions: [
+      data: [
         {
           id: 'permission-1',
           code: 'users.read',
@@ -161,6 +179,12 @@ describe('UsersController', () => {
           ],
         },
       ],
+      meta: {
+        page: 1,
+        limit: 20,
+        total: 1,
+        totalPages: 1,
+      },
     });
   });
 });

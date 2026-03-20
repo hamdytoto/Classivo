@@ -16,6 +16,8 @@ import { Permissions } from '../../common/decorators';
 import { JwtAuthGuard } from '../../common/guards';
 import type { AuthenticatedActor } from '../../common/types/request-context.type';
 import { CreateUserDto } from './dto/create-user.dto';
+import { FindUserPermissionsQueryDto } from './dto/find-user-permissions-query.dto';
+import { FindUserRolesQueryDto } from './dto/find-user-roles-query.dto';
 import { FindUsersQueryDto } from './dto/find-users-query.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
@@ -65,16 +67,19 @@ export class UsersController {
   @Permissions('users.read')
   @ApiOperation({ summary: 'Inspect roles assigned to a user' })
   @ApiParam({ name: 'id', format: 'uuid' })
-  findRoles(@Param('id') id: string) {
-    return this.usersService.findRoles(id);
+  findRoles(@Param('id') id: string, @Query() query: FindUserRolesQueryDto) {
+    return this.usersService.findRoles(id, query);
   }
 
   @Get(':id/permissions')
   @Permissions('users.read')
   @ApiOperation({ summary: 'Inspect effective permissions for a user' })
   @ApiParam({ name: 'id', format: 'uuid' })
-  findPermissions(@Param('id') id: string) {
-    return this.usersService.findPermissions(id);
+  findPermissions(
+    @Param('id') id: string,
+    @Query() query: FindUserPermissionsQueryDto,
+  ) {
+    return this.usersService.findPermissions(id, query);
   }
 
   @Get(':id')

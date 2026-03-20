@@ -124,19 +124,38 @@ describe('AuthService', () => {
 
   it('should delegate profile and session operations', async () => {
     getCurrentUserProfileExecute.mockResolvedValueOnce({ id: 'user-1' });
-    listActiveSessionsExecute.mockResolvedValueOnce([{ id: 'session-1' }]);
+    listActiveSessionsExecute.mockResolvedValueOnce({
+      data: [{ id: 'session-1' }],
+      meta: {
+        page: 1,
+        limit: 10,
+        total: 1,
+        totalPages: 1,
+      },
+    });
     revokeSessionExecute.mockResolvedValueOnce(undefined);
 
     await expect(service.me('user-1')).resolves.toEqual({ id: 'user-1' });
-    await expect(service.sessions('user-1')).resolves.toEqual([
-      { id: 'session-1' },
-    ]);
+    await expect(
+      service.sessions('user-1', { page: 1, limit: 10 }),
+    ).resolves.toEqual({
+      data: [{ id: 'session-1' }],
+      meta: {
+        page: 1,
+        limit: 10,
+        total: 1,
+        totalPages: 1,
+      },
+    });
     await expect(
       service.revokeSession('session-1', 'user-1'),
     ).resolves.toBeUndefined();
 
     expect(getCurrentUserProfileExecute).toHaveBeenCalledWith('user-1');
-    expect(listActiveSessionsExecute).toHaveBeenCalledWith('user-1');
+    expect(listActiveSessionsExecute).toHaveBeenCalledWith('user-1', {
+      page: 1,
+      limit: 10,
+    });
     expect(revokeSessionExecute).toHaveBeenCalledWith('session-1', 'user-1');
   });
 

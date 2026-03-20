@@ -5,9 +5,16 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma, type UserStatus } from '@prisma/client';
-import { hash } from '../../common/security/hash.utils';
+import {
+  buildPaginatedResult,
+  paginateArray,
+  resolvePaginationParams,
+} from '../../common/pagination/pagination.util';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { hash } from '../../common/security/hash.utils';
 import { CreateUserDto } from './dto/create-user.dto';
+import { FindUserPermissionsQueryDto } from './dto/find-user-permissions-query.dto';
+import { FindUserRolesQueryDto } from './dto/find-user-roles-query.dto';
 import { FindUsersQueryDto } from './dto/find-users-query.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
@@ -98,10 +105,10 @@ export class UsersService {
   }
 
   async findAll(query: FindUsersQueryDto) {
-    const page = query.page ?? 1;
-    const limit = query.limit ?? 20;
-    const skip = (page - 1) * limit;
+    const pagination = resolvePaginationParams(query);
     const where: Prisma.UserWhereInput = {};
+    const sortBy = query.sortBy ?? 'createdAt';
+    const sortOrder = query.sortOrder ?? 'desc';
 
     if (query.schoolId) {
       where.schoolId = query.schoolId;
@@ -112,33 +119,30 @@ export class UsersService {
     }
 
     if (query.email) {
-      where.email = query.email;
+      where.email = {
+        contains: query.email,
+        mode: 'insensitive',
+      };
     }
 
     if (query.phone) {
-      where.phone = query.phone;
+      where.phone = {
+        contains: query.phone,
+      };
     }
 
     const [users, total] = await this.prisma.$transaction([
       this.prisma.user.findMany({
         where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
+        skip: pagination.skip,
+        take: pagination.limit,
+        orderBy: { [sortBy]: sortOrder },
         select: USER_PUBLIC_SELECT,
       }),
       this.prisma.user.count({ where }),
     ]);
 
-    return {
-      data: users,
-      meta: {
-        page,
-        limit,
-        total,
-        totalPages: Math.max(1, Math.ceil(total / limit)),
-      },
-    };
+    return buildPaginatedResult(users, pagination, total);
   }
 
   async findOne(id: string) {
@@ -196,7 +200,7 @@ export class UsersService {
     return this.findOne(userId);
   }
 
-  async findRoles(userId: string) {
+  async findRoles(userId: string, query: FindUserRolesQueryDto = {}) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: USER_ROLES_SELECT,
@@ -209,18 +213,43 @@ export class UsersService {
       });
     }
 
+    const sortBy = query.sortBy ?? 'assignedAt';
+    const sortOrder = query.sortOrder ?? 'desc';
+    let roles = user.roles.map((assignment) => ({
+      id: assignment.role.id,
+      code: assignment.role.code,
+      name: assignment.role.name,
+      assignedAt: assignment.assignedAt,
+    }));
+
+    if (query.code) {
+      const codeFilter = query.code.toLowerCase();
+      roles = roles.filter((role) =>
+        role.code.toLowerCase().includes(codeFilter),
+      );
+    }
+
+    if (query.name) {
+      const nameFilter = query.name.toLowerCase();
+      roles = roles.filter((role) =>
+        role.name.toLowerCase().includes(nameFilter),
+      );
+    }
+
+    roles.sort((left, right) =>
+      this.compareValues(left[sortBy], right[sortBy], sortOrder),
+    );
+
     return {
       userId: user.id,
-      roles: user.roles.map((assignment) => ({
-        id: assignment.role.id,
-        code: assignment.role.code,
-        name: assignment.role.name,
-        assignedAt: assignment.assignedAt,
-      })),
+      ...paginateArray(roles, resolvePaginationParams(query)),
     };
   }
 
-  async findPermissions(userId: string) {
+  async findPermissions(
+    userId: string,
+    query: FindUserPermissionsQueryDto = {},
+  ) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: USER_PERMISSIONS_SELECT,
@@ -278,9 +307,31 @@ export class UsersService {
       }
     }
 
+    const sortBy = query.sortBy ?? 'code';
+    const sortOrder = query.sortOrder ?? 'asc';
+    let permissions = Array.from(permissionMap.values());
+
+    if (query.code) {
+      const codeFilter = query.code.toLowerCase();
+      permissions = permissions.filter((permission) =>
+        permission.code.toLowerCase().includes(codeFilter),
+      );
+    }
+
+    if (query.name) {
+      const nameFilter = query.name.toLowerCase();
+      permissions = permissions.filter((permission) =>
+        permission.name.toLowerCase().includes(nameFilter),
+      );
+    }
+
+    permissions.sort((left, right) =>
+      this.compareValues(left[sortBy], right[sortBy], sortOrder),
+    );
+
     return {
       userId: user.id,
-      permissions: Array.from(permissionMap.values()),
+      ...paginateArray(permissions, resolvePaginationParams(query)),
     };
   }
 
@@ -351,5 +402,19 @@ export class UsersService {
         message: 'Invalid schoolId',
       });
     }
+  }
+
+  private compareValues(
+    left: Date | string | null | undefined,
+    right: Date | string | null | undefined,
+    sortOrder: 'asc' | 'desc',
+  ) {
+    const direction = sortOrder === 'asc' ? 1 : -1;
+
+    if (left instanceof Date && right instanceof Date) {
+      return (left.getTime() - right.getTime()) * direction;
+    }
+
+    return String(left ?? '').localeCompare(String(right ?? '')) * direction;
   }
 }
