@@ -14,24 +14,24 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { CurrentUser, CurrentUserId, Roles } from '../../common/decorators';
-import { UuidParamDto } from '../../common/dto/uuid-param.dto';
+import { CurrentUser, CurrentUserId, Roles } from '../../../common/decorators';
+import { UuidParamDto } from '../../../common/dto/uuid-param.dto';
 import {
   ApiAuthRequiredResponse,
   ApiRoleForbiddenResponse,
   ApiValidationFailureResponse,
-} from '../../common/swagger/api-error-responses';
-import type { AuthenticatedActor } from '../../common/types/request-context.type';
-import { CreatePermissionDto } from './dto/create-permission.dto';
-import { CreateRoleDto } from './dto/create-role.dto';
-import { FindPermissionsQueryDto } from './dto/find-permissions-query.dto';
-import { FindRolesQueryDto } from './dto/find-roles-query.dto';
-import { FindRoleUsersQueryDto } from './dto/find-role-users-query.dto';
-import { RolePermissionParamsDto } from './dto/role-permission-params.dto';
-import { UpdatePermissionDto } from './dto/update-permission.dto';
-import { UpdateRoleDto } from './dto/update-role.dto';
-import { UserRoleParamsDto } from './dto/user-role-params.dto';
-import { RolesService } from './roles.service';
+} from '../../../common/swagger/api-error-responses';
+import type { AuthenticatedActor } from '../../../common/types/request-context.type';
+import { CreatePermissionDto } from '../dto/create-permission.dto';
+import { CreateRoleDto } from '../dto/create-role.dto';
+import { FindPermissionsQueryDto } from '../dto/find-permissions-query.dto';
+import { FindRolesQueryDto } from '../dto/find-roles-query.dto';
+import { FindRoleUsersQueryDto } from '../dto/find-role-users-query.dto';
+import { RolePermissionParamsDto } from '../dto/role-permission-params.dto';
+import { UpdatePermissionDto } from '../dto/update-permission.dto';
+import { UpdateRoleDto } from '../dto/update-role.dto';
+import { UserRoleParamsDto } from '../dto/user-role-params.dto';
+import { RolesService } from '../roles.service';
 
 @ApiTags('roles')
 @ApiBearerAuth()

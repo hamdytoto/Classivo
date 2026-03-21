@@ -6,7 +6,6 @@ import {
   Patch,
   Post,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -14,25 +13,23 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { CurrentUser, CurrentUserId, Permissions } from '../../common/decorators';
-import { UuidParamDto } from '../../common/dto/uuid-param.dto';
-import { JwtAuthGuard } from '../../common/guards';
+import { CurrentUser, CurrentUserId, Permissions } from '../../../common/decorators';
+import { UuidParamDto } from '../../../common/dto/uuid-param.dto';
 import {
   ApiAuthRequiredResponse,
   ApiPermissionForbiddenResponse,
   ApiValidationFailureResponse,
-} from '../../common/swagger/api-error-responses';
-import type { AuthenticatedActor } from '../../common/types/request-context.type';
-import { CreateUserDto } from './dto/create-user.dto';
-import { FindUserPermissionsQueryDto } from './dto/find-user-permissions-query.dto';
-import { FindUserRolesQueryDto } from './dto/find-user-roles-query.dto';
-import { FindUsersQueryDto } from './dto/find-users-query.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { UsersService } from './users.service';
+} from '../../../common/swagger/api-error-responses';
+import type { AuthenticatedActor } from '../../../common/types/request-context.type';
+import { CreateUserDto } from '../dto/create-user.dto';
+import { FindUserPermissionsQueryDto } from '../dto/find-user-permissions-query.dto';
+import { FindUserRolesQueryDto } from '../dto/find-user-roles-query.dto';
+import { FindUsersQueryDto } from '../dto/find-users-query.dto';
+import { UpdateUserDto } from '../dto/update-user.dto';
+import { UsersService } from '../users.service';
 
 @ApiTags('users')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}

@@ -4,8 +4,18 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { SortOrder } from '../../common/dto/pagination-query.dto';
 import { compareHash } from '../../common/security/hash.utils';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { CreateUserService } from './application/create-user.service';
+import { FindUserPermissionsService } from './application/find-user-permissions.service';
+import { FindUserRolesService } from './application/find-user-roles.service';
+import { FindUserService } from './application/find-user.service';
+import { FindUsersService } from './application/find-users.service';
+import { GetCurrentUserProfileService } from './application/get-current-user-profile.service';
+import { UpdateUserService } from './application/update-user.service';
+import { UsersAccessPolicy } from './domain/policies/users-access.policy';
+import { UsersRepository } from './infrastructure/repositories/users.repository';
 import { UsersService } from './users.service';
 
 describe('UsersService', () => {
@@ -29,6 +39,15 @@ describe('UsersService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UsersService,
+        CreateUserService,
+        FindUsersService,
+        FindUserService,
+        UpdateUserService,
+        GetCurrentUserProfileService,
+        FindUserRolesService,
+        FindUserPermissionsService,
+        UsersAccessPolicy,
+        UsersRepository,
         {
           provide: PrismaService,
           useValue: prismaMock,
@@ -333,7 +352,7 @@ describe('UsersService', () => {
         limit: 5,
         email: 'classivo.dev',
         sortBy: 'email',
-        sortOrder: 'asc',
+        sortOrder: SortOrder.asc,
       }),
     ).resolves.toEqual({
       data: [
