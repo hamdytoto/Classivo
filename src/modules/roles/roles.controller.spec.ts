@@ -76,7 +76,10 @@ describe('RolesController', () => {
 
     const result = await controller.findUsersForRole('role-1', {} as never);
 
-    expect(rolesServiceMock.findUsersForRole).toHaveBeenCalledWith('role-1', {});
+    expect(rolesServiceMock.findUsersForRole).toHaveBeenCalledWith(
+      'role-1',
+      {},
+    );
     expect(result).toEqual({
       roleId: 'role-1',
       roleCode: 'SCHOOL_ADMIN',
@@ -102,6 +105,31 @@ describe('RolesController', () => {
         total: 1,
         totalPages: 1,
       },
+    });
+  });
+
+  it('should pass the authenticated actor when assigning a role to a user', async () => {
+    (rolesServiceMock.assignRoleToUser as jest.Mock).mockResolvedValueOnce({
+      userId: 'user-1',
+      roleId: 'role-1',
+      assigned: true,
+    });
+
+    const result = await controller.assignRoleToUser(
+      'user-1',
+      'role-1',
+      'actor-1',
+    );
+
+    expect(rolesServiceMock.assignRoleToUser).toHaveBeenCalledWith(
+      'user-1',
+      'role-1',
+      'actor-1',
+    );
+    expect(result).toEqual({
+      userId: 'user-1',
+      roleId: 'role-1',
+      assigned: true,
     });
   });
 });

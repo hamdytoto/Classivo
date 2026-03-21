@@ -1,5 +1,8 @@
 import { randomUUID } from 'crypto';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { AUDIT_ACTIONS } from '../../../common/audit/audit.constants';
+import { AuditLogService } from '../../../common/audit/audit-log.service';
+import { PrismaTransactionService } from '../../../common/prisma/prisma-transaction.service';
 import { AUTH_ERROR_CODES } from '../domain/auth-errors';
 import { SessionContext } from '../domain/auth.types';
 import { AuthIdentityPolicy } from '../domain/policies/auth-identity.policy';
@@ -13,12 +16,14 @@ import { LoginDto } from '../interface/dto/login.dto';
 @Injectable()
 export class LoginService {
   constructor(
+    private readonly prismaTransactionService: PrismaTransactionService,
     private readonly authIdentityPolicy: AuthIdentityPolicy,
     private readonly authUserRepository: AuthUserRepository,
     private readonly authTokenService: AuthTokenService,
     private readonly authSessionRepository: AuthSessionRepository,
     private readonly passwordHasherService: PasswordHasherService,
     private readonly tokenHasherService: TokenHasherService,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   async execute(dto: LoginDto, sessionContext?: SessionContext) {
@@ -27,7 +32,10 @@ export class LoginService {
 
     if (
       !user ||
-      !(await this.passwordHasherService.compare(dto.password, user.passwordHash))
+      !(await this.passwordHasherService.compare(
+        dto.password,
+        user.passwordHash,
+      ))
     ) {
       throw new UnauthorizedException({
         code: AUTH_ERROR_CODES.invalidCredentials,
@@ -44,16 +52,41 @@ export class LoginService {
       authenticatedUser,
       sessionId,
     );
+    const refreshExpiresAt = this.authTokenService.buildExpiryDate(
+      authTokens.refreshExpiresIn,
+    );
 
-    await this.authSessionRepository.create({
-      id: sessionId,
-      userId: authenticatedUser.id,
-      refreshTokenHash: this.tokenHasherService.hash(authTokens.refreshToken),
-      ipAddress: sessionContext?.ipAddress ?? null,
-      userAgent: sessionContext?.userAgent ?? null,
-      expiresAt: this.authTokenService.buildExpiryDate(
-        authTokens.refreshExpiresIn,
-      ),
+    await this.prismaTransactionService.run(async (tx) => {
+      await this.authSessionRepository.create(
+        {
+          id: sessionId,
+          userId: authenticatedUser.id,
+          refreshTokenHash: this.tokenHasherService.hash(
+            authTokens.refreshToken,
+          ),
+          ipAddress: sessionContext?.ipAddress ?? null,
+          userAgent: sessionContext?.userAgent ?? null,
+          expiresAt: refreshExpiresAt,
+        },
+        tx,
+      );
+
+      await this.auditLogService.log(
+        {
+          action: AUDIT_ACTIONS.authLogin,
+          resource: 'session',
+          resourceId: sessionId,
+          actorId: authenticatedUser.id,
+          schoolId: authenticatedUser.schoolId,
+          ipAddress: sessionContext?.ipAddress ?? null,
+          metadata: {
+            sessionId,
+            loginMethod: 'email' in identifier ? 'email' : 'phone',
+            userAgent: sessionContext?.userAgent ?? null,
+          },
+        },
+        tx,
+      );
     });
 
     return {

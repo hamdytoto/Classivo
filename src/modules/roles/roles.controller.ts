@@ -9,7 +9,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
-import { Roles } from '../../common/decorators';
+import { CurrentUserId, Roles } from '../../common/decorators';
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { FindPermissionsQueryDto } from './dto/find-permissions-query.dto';
@@ -66,7 +66,10 @@ export class RolesController {
   @Get(':id/users')
   @ApiOperation({ summary: 'Inspect users assigned to a role' })
   @ApiParam({ name: 'id', format: 'uuid' })
-  findUsersForRole(@Param('id') id: string, @Query() query: FindRoleUsersQueryDto) {
+  findUsersForRole(
+    @Param('id') id: string,
+    @Query() query: FindRoleUsersQueryDto,
+  ) {
     return this.rolesService.findUsersForRole(id, query);
   }
 
@@ -89,8 +92,13 @@ export class RolesController {
   assignPermissionToRole(
     @Param('roleId') roleId: string,
     @Param('permissionId') permissionId: string,
+    @CurrentUserId() actorId: string,
   ) {
-    return this.rolesService.assignPermissionToRole(roleId, permissionId);
+    return this.rolesService.assignPermissionToRole(
+      roleId,
+      permissionId,
+      actorId,
+    );
   }
 
   @Delete(':roleId/permissions/:permissionId')
@@ -98,8 +106,13 @@ export class RolesController {
   removePermissionFromRole(
     @Param('roleId') roleId: string,
     @Param('permissionId') permissionId: string,
+    @CurrentUserId() actorId: string,
   ) {
-    return this.rolesService.removePermissionFromRole(roleId, permissionId);
+    return this.rolesService.removePermissionFromRole(
+      roleId,
+      permissionId,
+      actorId,
+    );
   }
 
   @Post('users/:userId/:roleId')
@@ -107,8 +120,9 @@ export class RolesController {
   assignRoleToUser(
     @Param('userId') userId: string,
     @Param('roleId') roleId: string,
+    @CurrentUserId() actorId: string,
   ) {
-    return this.rolesService.assignRoleToUser(userId, roleId);
+    return this.rolesService.assignRoleToUser(userId, roleId, actorId);
   }
 
   @Delete('users/:userId/:roleId')
@@ -116,7 +130,8 @@ export class RolesController {
   removeRoleFromUser(
     @Param('userId') userId: string,
     @Param('roleId') roleId: string,
+    @CurrentUserId() actorId: string,
   ) {
-    return this.rolesService.removeRoleFromUser(userId, roleId);
+    return this.rolesService.removeRoleFromUser(userId, roleId, actorId);
   }
 }

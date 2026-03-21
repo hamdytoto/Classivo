@@ -63,7 +63,7 @@ Sprint 1 should remain an identity-and-access sprint. Do not pull academic domai
 - [x] Add onboarding defaults during `register-school` such as academic year placeholder, default settings, and seeded school-scoped roles if required
 - [x] Protect `roles` and sensitive `users` endpoints with role/permission checks, not JWT only
 - [x] Add pagination, filtering, and sorting conventions to all list endpoints
-- [ ] Add consistent audit events for login, refresh, logout, password change, role assignment, and permission changes
+- [x] Add consistent audit events for login, refresh, logout, password change, role assignment, and permission changes -> see `src/common/audit/*`, `src/modules/auth/*`, and `src/modules/roles/*`
 - [ ] Store richer session metadata: IP, user agent, last used at, revoked at
 - [ ] Add account status enforcement (`ACTIVE`, `SUSPENDED`, `DISABLED`) inside login and token refresh flows
 - [ ] Add DTO-level validation for all auth and role-management operations if any remain uncovered

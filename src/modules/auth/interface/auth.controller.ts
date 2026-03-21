@@ -114,7 +114,10 @@ export class AuthController {
   @ApiOperation({
     summary: 'Request a password reset OTP to be sent to the user email',
   })
-  forgotPassword(@Body() dto: ForgotPasswordDto, @Req() request: SessionRequest) {
+  forgotPassword(
+    @Body() dto: ForgotPasswordDto,
+    @Req() request: SessionRequest,
+  ) {
     return this.authService.forgotPassword(
       dto.email,
       this.extractSessionContext(request),
@@ -139,8 +142,16 @@ export class AuthController {
   @ApiOperation({
     summary: 'Logout and revoke the active refresh-token session',
   })
-  async logout(@Body() dto: LogoutDto, @CurrentUserId() actorId: string) {
-    await this.authService.logout(dto.refreshToken, actorId);
+  async logout(
+    @Body() dto: LogoutDto,
+    @CurrentUserId() actorId: string,
+    @Req() request: SessionRequest,
+  ) {
+    await this.authService.logout(
+      dto.refreshToken,
+      actorId,
+      this.extractSessionContext(request),
+    );
   }
 
   @Post('logout-all')
@@ -151,11 +162,16 @@ export class AuthController {
     summary:
       'Logout and revoke all active sessions. Optionally exclude the current session.',
   })
-  async logoutAll(@Body() dto: LogoutAllDto, @CurrentUserId() actorId: string) {
+  async logoutAll(
+    @Body() dto: LogoutAllDto,
+    @CurrentUserId() actorId: string,
+    @Req() request: SessionRequest,
+  ) {
     return this.authService.logoutAll(
       dto.refreshToken,
       dto.includeCurrent ?? false,
       actorId,
+      this.extractSessionContext(request),
     );
   }
 
@@ -169,11 +185,13 @@ export class AuthController {
   async changePassword(
     @Body() dto: ChangePasswordDto,
     @CurrentUserId() userId: string,
+    @Req() request: SessionRequest,
   ) {
     await this.authService.changePassword(
       userId,
       dto.currentPassword,
       dto.newPassword,
+      this.extractSessionContext(request),
     );
   }
 

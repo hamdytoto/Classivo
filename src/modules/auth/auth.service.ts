@@ -39,12 +39,26 @@ export class AuthService {
     return this.refreshSessionService.execute(refreshToken, sessionContext);
   }
 
-  logout(refreshToken: string, actorId?: string) {
-    return this.logoutService.execute(refreshToken, actorId);
+  logout(
+    refreshToken: string,
+    actorId?: string,
+    sessionContext?: SessionContext,
+  ) {
+    return this.logoutService.execute(refreshToken, actorId, sessionContext);
   }
 
-  logoutAll(refreshToken: string, includeCurrent: boolean, actorId?: string) {
-    return this.logoutAllService.execute(refreshToken, includeCurrent, actorId);
+  logoutAll(
+    refreshToken: string,
+    includeCurrent: boolean,
+    actorId?: string,
+    sessionContext?: SessionContext,
+  ) {
+    return this.logoutAllService.execute(
+      refreshToken,
+      includeCurrent,
+      actorId,
+      sessionContext,
+    );
   }
 
   revokeSession(sessionId: string, actorId: string) {
@@ -59,11 +73,13 @@ export class AuthService {
     userId: string,
     currentPassword: string,
     newPassword: string,
+    sessionContext?: SessionContext,
   ) {
     return this.changePasswordService.execute(
       userId,
       currentPassword,
       newPassword,
+      sessionContext,
     );
   }
 

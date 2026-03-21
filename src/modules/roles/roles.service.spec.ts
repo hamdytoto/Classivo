@@ -1,5 +1,7 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { AUDIT_ACTIONS } from '../../common/audit/audit.constants';
+import { AuditLogService } from '../../common/audit/audit-log.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { RolesService } from './roles.service';
 
@@ -23,10 +25,12 @@ describe('RolesService', () => {
       update: jest.fn(),
     },
     rolePermission: {
+      findUnique: jest.fn(),
       upsert: jest.fn(),
       delete: jest.fn(),
     },
     userRole: {
+      findUnique: jest.fn(),
       upsert: jest.fn(),
       delete: jest.fn(),
     },
@@ -34,6 +38,9 @@ describe('RolesService', () => {
       findUnique: jest.fn(),
     },
   } as unknown as PrismaService;
+  const auditLogServiceMock = {
+    log: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -42,6 +49,10 @@ describe('RolesService', () => {
         {
           provide: PrismaService,
           useValue: prismaMock,
+        },
+        {
+          provide: AuditLogService,
+          useValue: auditLogServiceMock,
         },
       ],
     }).compile();
@@ -147,8 +158,8 @@ describe('RolesService', () => {
       },
     ]);
     (prismaMock.role.count as jest.Mock).mockResolvedValueOnce(1);
-    (prismaMock.$transaction as jest.Mock).mockImplementationOnce((operations) =>
-      Promise.all(operations),
+    (prismaMock.$transaction as jest.Mock).mockImplementationOnce(
+      (operations) => Promise.all(operations),
     );
 
     await expect(
@@ -157,7 +168,7 @@ describe('RolesService', () => {
         limit: 10,
         code: 'ADMIN',
         sortBy: 'name',
-        sortOrder:'asc',
+        sortOrder: 'asc',
       }),
     ).resolves.toEqual({
       data: [
@@ -190,6 +201,112 @@ describe('RolesService', () => {
           },
         },
       }),
+    );
+  });
+
+  it('should audit permission assignment to a role', async () => {
+    const tx = {
+      rolePermission: {
+        upsert: jest.fn().mockResolvedValue(undefined),
+      },
+    };
+
+    (prismaMock.role.findUnique as jest.Mock)
+      .mockResolvedValueOnce({
+        id: 'role-1',
+        code: 'SCHOOL_ADMIN',
+        name: 'School Admin',
+      })
+      .mockResolvedValueOnce({
+        id: 'role-1',
+        code: 'SCHOOL_ADMIN',
+        name: 'School Admin',
+        createdAt: new Date('2026-03-13T00:00:00.000Z'),
+        updatedAt: new Date('2026-03-13T00:00:00.000Z'),
+        permissions: [],
+      });
+    (prismaMock.permission.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: 'permission-1',
+      code: 'users.manage',
+      name: 'Manage users',
+    });
+    (prismaMock.rolePermission.findUnique as jest.Mock).mockResolvedValueOnce(
+      null,
+    );
+    (prismaMock.$transaction as jest.Mock).mockImplementationOnce((callback) =>
+      callback(tx),
+    );
+    (auditLogServiceMock.log as jest.Mock).mockResolvedValueOnce(undefined);
+
+    await expect(
+      service.assignPermissionToRole('role-1', 'permission-1', 'actor-1'),
+    ).resolves.toEqual({
+      id: 'role-1',
+      code: 'SCHOOL_ADMIN',
+      name: 'School Admin',
+      createdAt: new Date('2026-03-13T00:00:00.000Z'),
+      updatedAt: new Date('2026-03-13T00:00:00.000Z'),
+      permissions: [],
+    });
+
+    expect(auditLogServiceMock.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: AUDIT_ACTIONS.permissionAssigned,
+        resource: 'role',
+        resourceId: 'role-1',
+        actorId: 'actor-1',
+        metadata: expect.objectContaining({
+          permissionCode: 'users.manage',
+          alreadyAssigned: false,
+        }),
+      }),
+      tx,
+    );
+  });
+
+  it('should audit role assignment to a user', async () => {
+    const tx = {
+      userRole: {
+        upsert: jest.fn().mockResolvedValue(undefined),
+      },
+    };
+
+    (prismaMock.role.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: 'role-1',
+      code: 'SCHOOL_ADMIN',
+      name: 'School Admin',
+    });
+    (prismaMock.user.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: 'user-1',
+      schoolId: 'school-1',
+    });
+    (prismaMock.userRole.findUnique as jest.Mock).mockResolvedValueOnce(null);
+    (prismaMock.$transaction as jest.Mock).mockImplementationOnce((callback) =>
+      callback(tx),
+    );
+    (auditLogServiceMock.log as jest.Mock).mockResolvedValueOnce(undefined);
+
+    await expect(
+      service.assignRoleToUser('user-1', 'role-1', 'actor-1'),
+    ).resolves.toEqual({
+      userId: 'user-1',
+      roleId: 'role-1',
+      assigned: true,
+    });
+
+    expect(auditLogServiceMock.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: AUDIT_ACTIONS.roleAssigned,
+        resource: 'user',
+        resourceId: 'user-1',
+        actorId: 'actor-1',
+        schoolId: 'school-1',
+        metadata: expect.objectContaining({
+          roleCode: 'SCHOOL_ADMIN',
+          alreadyAssigned: false,
+        }),
+      }),
+      tx,
     );
   });
 });

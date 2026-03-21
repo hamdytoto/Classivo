@@ -5,6 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { AUDIT_ACTIONS } from '../../common/audit/audit.constants';
+import { AuditLogService } from '../../common/audit/audit-log.service';
 import {
   buildPaginatedResult,
   paginateArray,
@@ -81,7 +83,10 @@ const PERMISSION_SELECT = {
 
 @Injectable()
 export class RolesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLogService: AuditLogService,
+  ) {}
 
   async createRole(dto: CreateRoleDto) {
     try {
@@ -234,23 +239,61 @@ export class RolesService {
     }
   }
 
-  async assignPermissionToRole(roleId: string, permissionId: string) {
-    await this.ensureRoleExists(roleId);
-    await this.ensurePermissionExists(permissionId);
-
-    try {
-      await this.prisma.rolePermission.upsert({
+  async assignPermissionToRole(
+    roleId: string,
+    permissionId: string,
+    actorId?: string,
+  ) {
+    const [role, permission, existingAssignment] = await Promise.all([
+      this.ensureRoleExists(roleId),
+      this.ensurePermissionExists(permissionId),
+      this.prisma.rolePermission.findUnique({
         where: {
           roleId_permissionId: {
             roleId,
             permissionId,
           },
         },
-        update: {},
-        create: {
-          roleId,
-          permissionId,
+        select: {
+          roleId: true,
         },
+      }),
+    ]);
+
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.rolePermission.upsert({
+          where: {
+            roleId_permissionId: {
+              roleId,
+              permissionId,
+            },
+          },
+          update: {},
+          create: {
+            roleId,
+            permissionId,
+          },
+        });
+
+        await this.auditLogService.log(
+          {
+            action: AUDIT_ACTIONS.permissionAssigned,
+            resource: 'role',
+            resourceId: role.id,
+            actorId,
+            metadata: {
+              roleId: role.id,
+              roleCode: role.code,
+              roleName: role.name,
+              permissionId: permission.id,
+              permissionCode: permission.code,
+              permissionName: permission.name,
+              alreadyAssigned: Boolean(existingAssignment),
+            },
+          },
+          tx,
+        );
       });
     } catch (error) {
       this.handlePrismaError(error);
@@ -259,15 +302,44 @@ export class RolesService {
     return this.findOneRole(roleId);
   }
 
-  async removePermissionFromRole(roleId: string, permissionId: string) {
+  async removePermissionFromRole(
+    roleId: string,
+    permissionId: string,
+    actorId?: string,
+  ) {
+    const [role, permission] = await Promise.all([
+      this.ensureRoleExists(roleId),
+      this.ensurePermissionExists(permissionId),
+    ]);
+
     try {
-      await this.prisma.rolePermission.delete({
-        where: {
-          roleId_permissionId: {
-            roleId,
-            permissionId,
+      await this.prisma.$transaction(async (tx) => {
+        await tx.rolePermission.delete({
+          where: {
+            roleId_permissionId: {
+              roleId,
+              permissionId,
+            },
           },
-        },
+        });
+
+        await this.auditLogService.log(
+          {
+            action: AUDIT_ACTIONS.permissionRemoved,
+            resource: 'role',
+            resourceId: role.id,
+            actorId,
+            metadata: {
+              roleId: role.id,
+              roleCode: role.code,
+              roleName: role.name,
+              permissionId: permission.id,
+              permissionCode: permission.code,
+              permissionName: permission.name,
+            },
+          },
+          tx,
+        );
       });
     } catch (error) {
       this.handlePrismaError(error);
@@ -276,23 +348,57 @@ export class RolesService {
     return this.findOneRole(roleId);
   }
 
-  async assignRoleToUser(userId: string, roleId: string) {
-    await this.ensureRoleExists(roleId);
-    await this.ensureUserExists(userId);
-
-    try {
-      await this.prisma.userRole.upsert({
+  async assignRoleToUser(userId: string, roleId: string, actorId?: string) {
+    const [role, user, existingAssignment] = await Promise.all([
+      this.ensureRoleExists(roleId),
+      this.ensureUserExists(userId),
+      this.prisma.userRole.findUnique({
         where: {
           userId_roleId: {
             userId,
             roleId,
           },
         },
-        update: {},
-        create: {
-          userId,
-          roleId,
+        select: {
+          userId: true,
         },
+      }),
+    ]);
+
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.userRole.upsert({
+          where: {
+            userId_roleId: {
+              userId,
+              roleId,
+            },
+          },
+          update: {},
+          create: {
+            userId,
+            roleId,
+          },
+        });
+
+        await this.auditLogService.log(
+          {
+            action: AUDIT_ACTIONS.roleAssigned,
+            resource: 'user',
+            resourceId: user.id,
+            actorId,
+            schoolId: user.schoolId,
+            metadata: {
+              userId: user.id,
+              userSchoolId: user.schoolId,
+              roleId: role.id,
+              roleCode: role.code,
+              roleName: role.name,
+              alreadyAssigned: Boolean(existingAssignment),
+            },
+          },
+          tx,
+        );
       });
     } catch (error) {
       this.handlePrismaError(error);
@@ -305,15 +411,40 @@ export class RolesService {
     };
   }
 
-  async removeRoleFromUser(userId: string, roleId: string) {
+  async removeRoleFromUser(userId: string, roleId: string, actorId?: string) {
+    const [role, user] = await Promise.all([
+      this.ensureRoleExists(roleId),
+      this.ensureUserExists(userId),
+    ]);
+
     try {
-      await this.prisma.userRole.delete({
-        where: {
-          userId_roleId: {
-            userId,
-            roleId,
+      await this.prisma.$transaction(async (tx) => {
+        await tx.userRole.delete({
+          where: {
+            userId_roleId: {
+              userId,
+              roleId,
+            },
           },
-        },
+        });
+
+        await this.auditLogService.log(
+          {
+            action: AUDIT_ACTIONS.roleRemoved,
+            resource: 'user',
+            resourceId: user.id,
+            actorId,
+            schoolId: user.schoolId,
+            metadata: {
+              userId: user.id,
+              userSchoolId: user.schoolId,
+              roleId: role.id,
+              roleCode: role.code,
+              roleName: role.name,
+            },
+          },
+          tx,
+        );
       });
     } catch (error) {
       this.handlePrismaError(error);
@@ -329,7 +460,7 @@ export class RolesService {
   private async ensureRoleExists(roleId: string) {
     const role = await this.prisma.role.findUnique({
       where: { id: roleId },
-      select: { id: true },
+      select: { id: true, code: true, name: true },
     });
 
     if (!role) {
@@ -338,12 +469,14 @@ export class RolesService {
         message: 'Role not found',
       });
     }
+
+    return role;
   }
 
   private async ensurePermissionExists(permissionId: string) {
     const permission = await this.prisma.permission.findUnique({
       where: { id: permissionId },
-      select: { id: true },
+      select: { id: true, code: true, name: true },
     });
 
     if (!permission) {
@@ -352,12 +485,14 @@ export class RolesService {
         message: 'Permission not found',
       });
     }
+
+    return permission;
   }
 
   private async ensureUserExists(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true },
+      select: { id: true, schoolId: true },
     });
 
     if (!user) {
@@ -366,6 +501,8 @@ export class RolesService {
         message: 'User not found',
       });
     }
+
+    return user;
   }
 
   private handlePrismaError(error: unknown): never {

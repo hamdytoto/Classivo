@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
+import { AuditLogService } from '../../common/audit/audit-log.service';
 import {
   AuthRateLimitGuard,
   JwtAuthGuard,
@@ -57,6 +58,7 @@ import { MailModule } from '../mail/mail.module';
   controllers: [AuthController],
   providers: [
     AuthService,
+    AuditLogService,
     LoginService,
     RefreshSessionService,
     LogoutService,

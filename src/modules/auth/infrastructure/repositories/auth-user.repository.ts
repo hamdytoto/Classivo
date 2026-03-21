@@ -56,6 +56,7 @@ export class AuthUserRepository {
       where: { id: userId },
       select: {
         id: true,
+        schoolId: true,
         passwordHash: true,
         status: true,
       },

@@ -105,20 +105,25 @@ describe('AuthService', () => {
       service.refresh('refresh-token', { userAgent: 'jest' }),
     ).resolves.toEqual({ refreshToken: 'next-token' });
     await expect(
-      service.logout('refresh-token', 'user-1'),
+      service.logout('refresh-token', 'user-1', { ipAddress: '127.0.0.1' }),
     ).resolves.toBeUndefined();
     await expect(
-      service.logoutAll('refresh-token', false, 'user-1'),
+      service.logoutAll('refresh-token', false, 'user-1', {
+        userAgent: 'jest',
+      }),
     ).resolves.toEqual({ revokedCount: 2 });
 
     expect(refreshExecute).toHaveBeenCalledWith('refresh-token', {
       userAgent: 'jest',
     });
-    expect(logoutExecute).toHaveBeenCalledWith('refresh-token', 'user-1');
+    expect(logoutExecute).toHaveBeenCalledWith('refresh-token', 'user-1', {
+      ipAddress: '127.0.0.1',
+    });
     expect(logoutAllExecute).toHaveBeenCalledWith(
       'refresh-token',
       false,
       'user-1',
+      { userAgent: 'jest' },
     );
   });
 
@@ -179,7 +184,9 @@ describe('AuthService', () => {
       ),
     ).resolves.toEqual({ school: { id: 'school-1' } });
     await expect(
-      service.changePassword('user-1', 'old', 'new'),
+      service.changePassword('user-1', 'old', 'new', {
+        ipAddress: '127.0.0.1',
+      }),
     ).resolves.toBeUndefined();
     await expect(
       service.forgotPassword('user@classivo.dev', { ipAddress: '127.0.0.1' }),
@@ -189,7 +196,9 @@ describe('AuthService', () => {
     ).resolves.toBeUndefined();
 
     expect(registerSchoolExecute).toHaveBeenCalled();
-    expect(changePasswordExecute).toHaveBeenCalledWith('user-1', 'old', 'new');
+    expect(changePasswordExecute).toHaveBeenCalledWith('user-1', 'old', 'new', {
+      ipAddress: '127.0.0.1',
+    });
     expect(requestPasswordResetExecute).toHaveBeenCalledWith(
       'user@classivo.dev',
       { ipAddress: '127.0.0.1' },

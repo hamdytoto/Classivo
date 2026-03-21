@@ -237,9 +237,16 @@ describe('AuthController', () => {
         refreshToken: 'refresh-token',
       } as never,
       'user-123',
+      {
+        ip: '127.0.0.1',
+        get: jest.fn().mockReturnValue('jest'),
+      } as never,
     );
 
-    expect(logoutMock).toHaveBeenCalledWith('refresh-token', 'user-123');
+    expect(logoutMock).toHaveBeenCalledWith('refresh-token', 'user-123', {
+      ipAddress: '127.0.0.1',
+      userAgent: 'jest',
+    });
     expect(result).toBeUndefined();
   });
 
@@ -252,9 +259,21 @@ describe('AuthController', () => {
         includeCurrent: false,
       } as never,
       'user-123',
+      {
+        ip: '127.0.0.1',
+        get: jest.fn().mockReturnValue('jest'),
+      } as never,
     );
 
-    expect(logoutAllMock).toHaveBeenCalledWith('refresh-token', false, 'user-123');
+    expect(logoutAllMock).toHaveBeenCalledWith(
+      'refresh-token',
+      false,
+      'user-123',
+      {
+        ipAddress: '127.0.0.1',
+        userAgent: 'jest',
+      },
+    );
     expect(result).toEqual({ revokedCount: 2 });
   });
 
@@ -267,12 +286,20 @@ describe('AuthController', () => {
         newPassword: 'NewPassword456',
       } as never,
       'user-123',
+      {
+        ip: '127.0.0.1',
+        get: jest.fn().mockReturnValue('jest'),
+      } as never,
     );
 
     expect(changePasswordMock).toHaveBeenCalledWith(
       'user-123',
       'OldPassword123',
       'NewPassword456',
+      {
+        ipAddress: '127.0.0.1',
+        userAgent: 'jest',
+      },
     );
     expect(result).toBeUndefined();
   });
@@ -306,13 +333,11 @@ describe('AuthController', () => {
   it('should delegate reset-password to auth service', async () => {
     resetPasswordMock.mockResolvedValueOnce(undefined);
 
-    const result = await controller.resetPassword(
-      {
-        email: 'john@classivo.dev',
-        otp: '123456',
-        newPassword: 'NewPassword456!',
-      } as never,
-    );
+    const result = await controller.resetPassword({
+      email: 'john@classivo.dev',
+      otp: '123456',
+      newPassword: 'NewPassword456!',
+    } as never);
 
     expect(resetPasswordMock).toHaveBeenCalledWith(
       'john@classivo.dev',

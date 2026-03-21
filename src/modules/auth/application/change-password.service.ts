@@ -3,8 +3,11 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { AUDIT_ACTIONS } from '../../../common/audit/audit.constants';
+import { AuditLogService } from '../../../common/audit/audit-log.service';
 import { PrismaTransactionService } from '../../../common/prisma/prisma-transaction.service';
 import { AUTH_ERROR_CODES } from '../domain/auth-errors';
+import { SessionContext } from '../domain/auth.types';
 import { AuthIdentityPolicy } from '../domain/policies/auth-identity.policy';
 import { AuthSessionRepository } from '../infrastructure/repositories/auth-session.repository';
 import { AuthUserRepository } from '../infrastructure/repositories/auth-user.repository';
@@ -18,12 +21,14 @@ export class ChangePasswordService {
     private readonly authSessionRepository: AuthSessionRepository,
     private readonly authUserRepository: AuthUserRepository,
     private readonly passwordHasherService: PasswordHasherService,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   async execute(
     userId: string,
     currentPassword: string,
     newPassword: string,
+    sessionContext?: SessionContext,
   ): Promise<void> {
     const user = await this.authUserRepository.findForPasswordChange(userId);
 
@@ -48,8 +53,7 @@ export class ChangePasswordService {
       });
     }
 
-    const newPasswordHash =
-      await this.passwordHasherService.hash(newPassword);
+    const newPasswordHash = await this.passwordHasherService.hash(newPassword);
 
     await this.prismaTransactionService.run(async (tx) => {
       await this.authUserRepository.updatePassword(
@@ -59,10 +63,27 @@ export class ChangePasswordService {
         new Date(),
       );
 
-      await this.authSessionRepository.revokeManyByUserId(
-        userId,
-        new Date(),
-        undefined,
+      const revokedSessions =
+        await this.authSessionRepository.revokeManyByUserId(
+          userId,
+          new Date(),
+          undefined,
+          tx,
+        );
+
+      await this.auditLogService.log(
+        {
+          action: AUDIT_ACTIONS.authChangePassword,
+          resource: 'user',
+          resourceId: userId,
+          actorId: userId,
+          schoolId: user.schoolId,
+          ipAddress: sessionContext?.ipAddress ?? null,
+          metadata: {
+            revokedSessionCount: revokedSessions.count,
+            userAgent: sessionContext?.userAgent ?? null,
+          },
+        },
         tx,
       );
     });
