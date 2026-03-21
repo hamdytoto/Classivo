@@ -10,11 +10,21 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 import { Permissions } from '../../common/decorators';
 import { UuidParamDto } from '../../common/dto/uuid-param.dto';
 import { JwtAuthGuard } from '../../common/guards';
+import {
+  ApiAuthRequiredResponse,
+  ApiPermissionForbiddenResponse,
+  ApiValidationFailureResponse,
+} from '../../common/swagger/api-error-responses';
 import type { AuthenticatedActor } from '../../common/types/request-context.type';
 import { CreateUserDto } from './dto/create-user.dto';
 import { FindUserPermissionsQueryDto } from './dto/find-user-permissions-query.dto';
@@ -28,6 +38,7 @@ type RequestWithActor = Request & {
 };
 
 @ApiTags('users')
+@ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('users')
 export class UsersController {
@@ -36,6 +47,9 @@ export class UsersController {
   @Post()
   @Permissions('users.manage')
   @ApiOperation({ summary: 'Create user' })
+  @ApiAuthRequiredResponse('/api/v1/users')
+  @ApiPermissionForbiddenResponse('/api/v1/users')
+  @ApiValidationFailureResponse('/api/v1/users')
   create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);
   }
@@ -43,12 +57,16 @@ export class UsersController {
   @Get()
   @Permissions('users.read')
   @ApiOperation({ summary: 'Find/list users' })
+  @ApiAuthRequiredResponse('/api/v1/users')
+  @ApiPermissionForbiddenResponse('/api/v1/users')
+  @ApiValidationFailureResponse('/api/v1/users')
   findAll(@Query() query: FindUsersQueryDto) {
     return this.usersService.findAll(query);
   }
 
   @Get('me')
   @ApiOperation({ summary: 'Get current user profile' })
+  @ApiAuthRequiredResponse('/api/v1/users/me')
   me(@Req() request: RequestWithActor) {
     const actor = request.user;
     const userId = actor?.id ?? actor?.userId ?? actor?.sub;
@@ -68,6 +86,9 @@ export class UsersController {
   @Permissions('users.read')
   @ApiOperation({ summary: 'Inspect roles assigned to a user' })
   @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiAuthRequiredResponse('/api/v1/users/{id}/roles')
+  @ApiPermissionForbiddenResponse('/api/v1/users/{id}/roles')
+  @ApiValidationFailureResponse('/api/v1/users/{id}/roles')
   findRoles(
     @Param() params: UuidParamDto,
     @Query() query: FindUserRolesQueryDto,
@@ -79,6 +100,9 @@ export class UsersController {
   @Permissions('users.read')
   @ApiOperation({ summary: 'Inspect effective permissions for a user' })
   @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiAuthRequiredResponse('/api/v1/users/{id}/permissions')
+  @ApiPermissionForbiddenResponse('/api/v1/users/{id}/permissions')
+  @ApiValidationFailureResponse('/api/v1/users/{id}/permissions')
   findPermissions(
     @Param() params: UuidParamDto,
     @Query() query: FindUserPermissionsQueryDto,
@@ -90,6 +114,9 @@ export class UsersController {
   @Permissions('users.read')
   @ApiOperation({ summary: 'Find user by id' })
   @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiAuthRequiredResponse('/api/v1/users/{id}')
+  @ApiPermissionForbiddenResponse('/api/v1/users/{id}')
+  @ApiValidationFailureResponse('/api/v1/users/{id}')
   findOne(@Param() params: UuidParamDto) {
     return this.usersService.findOne(params.id);
   }
@@ -98,6 +125,9 @@ export class UsersController {
   @Permissions('users.manage')
   @ApiOperation({ summary: 'Update user by id' })
   @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiAuthRequiredResponse('/api/v1/users/{id}')
+  @ApiPermissionForbiddenResponse('/api/v1/users/{id}')
+  @ApiValidationFailureResponse('/api/v1/users/{id}')
   update(@Param() params: UuidParamDto, @Body() updateUserDto: UpdateUserDto) {
     return this.usersService.update(params.id, updateUserDto);
   }

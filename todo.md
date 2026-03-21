@@ -68,8 +68,7 @@ Sprint 1 should remain an identity-and-access sprint. Do not pull academic domai
 - [x] Add account status enforcement (`ACTIVE`, `SUSPENDED`, `DISABLED`) inside login and token refresh flows
 - [x] Add DTO-level validation for all auth and role-management operations if any remain uncovered
 - [x] Add integration or e2e tests for `login -> refresh -> logout`, role assignment, and access denial cases
-- [ ] Add Swagger response examples for auth errors, forbidden responses, and validation failures
-
+- [x] Add Swagger response examples for auth errors, forbidden responses, and validation failures
 ### Explicitly defer from Sprint 1
 
 - [ ] Schools, courses, classes, and enrollments CRUD
