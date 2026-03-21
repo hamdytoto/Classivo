@@ -46,7 +46,8 @@ export class RefreshSessionPolicy {
       revokeOnInactiveUser?: boolean;
     },
   ): Promise<SessionWithUser | SessionWithoutUser> {
-    const payload = await this.authTokenService.verifyRefreshToken(refreshToken);
+    const payload =
+      await this.authTokenService.verifyRefreshToken(refreshToken);
 
     if (options?.actorId && options.actorId !== payload.sub) {
       throw new UnauthorizedException({
@@ -83,6 +84,19 @@ export class RefreshSessionPolicy {
     await this.assertSessionIsUsable(session, refreshToken);
 
     return session;
+  }
+
+  async validateRefreshSessionWithUser(
+    refreshToken: string,
+    options?: {
+      actorId?: string;
+      revokeOnInactiveUser?: boolean;
+    },
+  ): Promise<SessionWithUser> {
+    return this.validateRefreshSession(refreshToken, {
+      ...options,
+      includeUser: true,
+    });
   }
 
   private assertSessionMatchesPayload(

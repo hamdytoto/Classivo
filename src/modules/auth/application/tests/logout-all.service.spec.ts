@@ -1,10 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AUDIT_ACTIONS } from '../../../common/audit/audit.constants';
-import { AuditLogService } from '../../../common/audit/audit-log.service';
-import { PrismaTransactionService } from '../../../common/prisma/prisma-transaction.service';
-import { RefreshSessionPolicy } from '../domain/policies/refresh-session.policy';
-import { AuthSessionRepository } from '../infrastructure/repositories/auth-session.repository';
-import { LogoutAllService } from './logout-all.service';
+import { AUDIT_ACTIONS } from '../../../../common/audit/audit.constants';
+import { AuditLogService } from '../../../../common/audit/audit-log.service';
+import { PrismaTransactionService } from '../../../../common/prisma/prisma-transaction.service';
+import { RefreshSessionPolicy } from '../../domain/policies/refresh-session.policy';
+import { AuthSessionRepository } from '../../infrastructure/repositories/auth-session.repository';
+import { LogoutAllService } from '../logout-all.service';
 
 describe('LogoutAllService', () => {
   let service: LogoutAllService;
@@ -13,9 +13,10 @@ describe('LogoutAllService', () => {
     run: jest.fn(),
   };
   const refreshSessionPolicyMock = {
-    validateRefreshSession: jest.fn(),
+    validateRefreshSessionWithUser: jest.fn(),
   };
   const authSessionRepositoryMock = {
+    touchMetadata: jest.fn(),
     revokeManyByUserId: jest.fn(),
   };
   const auditLogServiceMock = {
@@ -52,14 +53,16 @@ describe('LogoutAllService', () => {
   it('should revoke sessions and audit logout-all', async () => {
     const tx = {};
 
-    refreshSessionPolicyMock.validateRefreshSession.mockResolvedValueOnce({
-      id: 'session-1',
-      userId: 'user-1',
-      user: {
-        id: 'user-1',
-        schoolId: 'school-1',
+    refreshSessionPolicyMock.validateRefreshSessionWithUser.mockResolvedValueOnce(
+      {
+        id: 'session-1',
+        userId: 'user-1',
+        user: {
+          id: 'user-1',
+          schoolId: 'school-1',
+        },
       },
-    });
+    );
     prismaTransactionServiceMock.run.mockImplementationOnce((callback) =>
       callback(tx),
     );
@@ -75,6 +78,15 @@ describe('LogoutAllService', () => {
       }),
     ).resolves.toEqual({ revokedCount: 3 });
 
+    expect(authSessionRepositoryMock.touchMetadata).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: 'session-1',
+        ipAddress: '127.0.0.1',
+        userAgent: 'jest',
+        lastUsedAt: expect.any(Date),
+      }),
+      tx,
+    );
     expect(auditLogServiceMock.log).toHaveBeenCalledWith(
       expect.objectContaining({
         action: AUDIT_ACTIONS.authLogoutAll,
@@ -85,6 +97,7 @@ describe('LogoutAllService', () => {
         metadata: expect.objectContaining({
           currentSessionId: 'session-1',
           includeCurrent: false,
+          lastUsedAt: expect.any(Date),
           revokedCount: 3,
         }),
       }),

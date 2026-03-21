@@ -1,8 +1,5 @@
 import { randomUUID } from 'crypto';
-import {
-  Injectable,
-  InternalServerErrorException,
-} from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { UserStatus } from '@prisma/client';
 import { PrismaTransactionService } from '../../../common/prisma/prisma-transaction.service';
 import { handlePrismaError } from '../../../common/prisma/prisma-error.handler';
@@ -48,6 +45,7 @@ export class RegisterSchoolService {
 
     const passwordHash = await this.passwordHasherService.hash(dto.password);
     const sessionId = randomUUID();
+    const lastUsedAt = new Date();
 
     try {
       return await this.prismaTransactionService.run(async (tx) => {
@@ -92,6 +90,7 @@ export class RegisterSchoolService {
             ),
             ipAddress: sessionContext?.ipAddress ?? null,
             userAgent: sessionContext?.userAgent ?? null,
+            lastUsedAt,
             expiresAt: this.authTokenService.buildExpiryDate(
               authTokens.refreshExpiresIn,
             ),

@@ -20,18 +20,19 @@ export class RefreshSessionService {
   ) {}
 
   async execute(refreshToken: string, sessionContext?: SessionContext) {
-    const session = await this.refreshSessionPolicy.validateRefreshSession(
-      refreshToken,
-      {
-        includeUser: true,
-        revokeOnInactiveUser: true,
-      },
-    );
+    const session =
+      await this.refreshSessionPolicy.validateRefreshSessionWithUser(
+        refreshToken,
+        {
+          revokeOnInactiveUser: true,
+        },
+      );
 
     const authTokens = await this.authTokenService.issueTokenPair(
       session.user,
       session.id,
     );
+    const lastUsedAt = new Date();
     const refreshExpiresAt = this.authTokenService.buildExpiryDate(
       authTokens.refreshExpiresIn,
     );
@@ -46,6 +47,7 @@ export class RefreshSessionService {
           expiresAt: refreshExpiresAt,
           ipAddress: sessionContext?.ipAddress ?? null,
           userAgent: sessionContext?.userAgent ?? null,
+          lastUsedAt,
         },
         tx,
       );

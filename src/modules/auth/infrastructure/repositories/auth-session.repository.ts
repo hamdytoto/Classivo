@@ -27,6 +27,7 @@ export class AuthSessionRepository {
       refreshTokenHash: string;
       ipAddress: string | null;
       userAgent: string | null;
+      lastUsedAt: Date;
       expiresAt: Date;
     },
     tx?: Prisma.TransactionClient,
@@ -41,6 +42,9 @@ export class AuthSessionRepository {
       select: {
         id: true,
         userId: true,
+        ipAddress: true,
+        userAgent: true,
+        lastUsedAt: true,
         refreshTokenHash: true,
         expiresAt: true,
         revokedAt: true,
@@ -54,6 +58,9 @@ export class AuthSessionRepository {
       select: {
         id: true,
         userId: true,
+        ipAddress: true,
+        userAgent: true,
+        lastUsedAt: true,
         refreshTokenHash: true,
         expiresAt: true,
         revokedAt: true,
@@ -80,7 +87,7 @@ export class AuthSessionRepository {
     query: ListActiveSessionsQueryDto = {},
   ) {
     const pagination = resolvePaginationParams(query);
-    const sortBy = query.sortBy ?? 'updatedAt';
+    const sortBy = query.sortBy ?? 'lastUsedAt';
     const sortOrder = query.sortOrder ?? 'desc';
     const where = buildActiveSessionWhere(userId, query);
 
@@ -94,7 +101,9 @@ export class AuthSessionRepository {
           id: true,
           ipAddress: true,
           userAgent: true,
+          lastUsedAt: true,
           expiresAt: true,
+          revokedAt: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -112,6 +121,7 @@ export class AuthSessionRepository {
       expiresAt: Date;
       ipAddress: string | null;
       userAgent: string | null;
+      lastUsedAt: Date;
     },
     tx?: Prisma.TransactionClient,
   ) {
@@ -121,6 +131,27 @@ export class AuthSessionRepository {
       data: {
         refreshTokenHash: params.refreshTokenHash,
         expiresAt: params.expiresAt,
+        ipAddress: params.ipAddress,
+        userAgent: params.userAgent,
+        lastUsedAt: params.lastUsedAt,
+      },
+    });
+  }
+
+  async touchMetadata(
+    params: {
+      sessionId: string;
+      lastUsedAt: Date;
+      ipAddress: string | null;
+      userAgent: string | null;
+    },
+    tx?: Prisma.TransactionClient,
+  ) {
+    const client = tx ?? this.prisma;
+    return client.session.update({
+      where: { id: params.sessionId },
+      data: {
+        lastUsedAt: params.lastUsedAt,
         ipAddress: params.ipAddress,
         userAgent: params.userAgent,
       },

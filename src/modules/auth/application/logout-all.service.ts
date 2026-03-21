@@ -21,19 +21,30 @@ export class LogoutAllService {
     actorId?: string,
     sessionContext?: SessionContext,
   ): Promise<{ revokedCount: number }> {
-    const session = await this.refreshSessionPolicy.validateRefreshSession(
-      refreshToken,
-      {
-        actorId,
-        includeUser: true,
-      },
-    );
+    const session =
+      await this.refreshSessionPolicy.validateRefreshSessionWithUser(
+        refreshToken,
+        {
+          actorId,
+        },
+      );
+    const lastUsedAt = new Date();
 
     const result = await this.prismaTransactionService.run(async (tx) => {
+      await this.authSessionRepository.touchMetadata(
+        {
+          sessionId: session.id,
+          lastUsedAt,
+          ipAddress: sessionContext?.ipAddress ?? null,
+          userAgent: sessionContext?.userAgent ?? null,
+        },
+        tx,
+      );
+
       const revokedSessions =
         await this.authSessionRepository.revokeManyByUserId(
           session.userId,
-          new Date(),
+          lastUsedAt,
           includeCurrent ? undefined : session.id,
           tx,
         );
@@ -49,6 +60,7 @@ export class LogoutAllService {
           metadata: {
             currentSessionId: session.id,
             includeCurrent,
+            lastUsedAt,
             revokedCount: revokedSessions.count,
             userAgent: sessionContext?.userAgent ?? null,
           },

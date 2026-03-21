@@ -7,6 +7,7 @@ import {
 
 export const SESSION_SORT_FIELDS = [
   'createdAt',
+  'lastUsedAt',
   'updatedAt',
   'expiresAt',
 ] as const;
@@ -24,7 +25,7 @@ export class ListActiveSessionsQueryDto extends PaginationSortQueryDto {
   @IsString()
   userAgent?: string;
 
-  @ApiPropertyOptional({ enum: SESSION_SORT_FIELDS, default: 'updatedAt' })
+  @ApiPropertyOptional({ enum: SESSION_SORT_FIELDS, default: 'lastUsedAt' })
   @IsOptional()
   @IsIn(SESSION_SORT_FIELDS)
   sortBy?: SessionSortField;

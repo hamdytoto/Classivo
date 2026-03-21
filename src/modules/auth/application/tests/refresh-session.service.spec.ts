@@ -15,7 +15,7 @@ describe('RefreshSessionService', () => {
     run: jest.fn(),
   };
   const refreshSessionPolicyMock = {
-    validateRefreshSession: jest.fn(),
+    validateRefreshSessionWithUser: jest.fn(),
   };
   const authSessionRepositoryMock = {
     rotate: jest.fn(),
@@ -69,14 +69,16 @@ describe('RefreshSessionService', () => {
   it('should rotate the session and audit the refresh', async () => {
     const tx = {};
 
-    refreshSessionPolicyMock.validateRefreshSession.mockResolvedValueOnce({
-      id: 'session-1',
-      userId: 'user-1',
-      user: {
-        id: 'user-1',
-        schoolId: 'school-1',
+    refreshSessionPolicyMock.validateRefreshSessionWithUser.mockResolvedValueOnce(
+      {
+        id: 'session-1',
+        userId: 'user-1',
+        user: {
+          id: 'user-1',
+          schoolId: 'school-1',
+        },
       },
-    });
+    );
     authTokenServiceMock.issueTokenPair.mockResolvedValueOnce({
       accessToken: 'access-token',
       tokenType: 'Bearer',
@@ -105,6 +107,15 @@ describe('RefreshSessionService', () => {
       }),
     );
 
+    expect(authSessionRepositoryMock.rotate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: 'session-1',
+        ipAddress: '127.0.0.1',
+        userAgent: 'jest',
+        lastUsedAt: expect.any(Date),
+      }),
+      tx,
+    );
     expect(auditLogServiceMock.log).toHaveBeenCalledWith(
       expect.objectContaining({
         action: AUDIT_ACTIONS.authRefresh,

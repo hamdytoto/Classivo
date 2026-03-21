@@ -48,6 +48,7 @@ export class LoginService {
     const authenticatedUser =
       await this.authUserRepository.touchLastLoginAndGetAuthUser(user.id);
     const sessionId = randomUUID();
+    const lastUsedAt = new Date();
     const authTokens = await this.authTokenService.issueTokenPair(
       authenticatedUser,
       sessionId,
@@ -66,6 +67,7 @@ export class LoginService {
           ),
           ipAddress: sessionContext?.ipAddress ?? null,
           userAgent: sessionContext?.userAgent ?? null,
+          lastUsedAt,
           expiresAt: refreshExpiresAt,
         },
         tx,

@@ -20,16 +20,26 @@ export class LogoutService {
     actorId?: string,
     sessionContext?: SessionContext,
   ): Promise<void> {
-    const session = await this.refreshSessionPolicy.validateRefreshSession(
-      refreshToken,
-      {
-        actorId,
-        includeUser: true,
-      },
-    );
+    const session =
+      await this.refreshSessionPolicy.validateRefreshSessionWithUser(
+        refreshToken,
+        {
+          actorId,
+        },
+      );
+    const lastUsedAt = new Date();
 
     await this.prismaTransactionService.run(async (tx) => {
-      await this.authSessionRepository.revokeById(session.id, new Date(), tx);
+      await this.authSessionRepository.touchMetadata(
+        {
+          sessionId: session.id,
+          lastUsedAt,
+          ipAddress: sessionContext?.ipAddress ?? null,
+          userAgent: sessionContext?.userAgent ?? null,
+        },
+        tx,
+      );
+      await this.authSessionRepository.revokeById(session.id, lastUsedAt, tx);
       await this.auditLogService.log(
         {
           action: AUDIT_ACTIONS.authLogout,
@@ -40,6 +50,7 @@ export class LogoutService {
           ipAddress: sessionContext?.ipAddress ?? null,
           metadata: {
             sessionId: session.id,
+            lastUsedAt,
             userAgent: sessionContext?.userAgent ?? null,
           },
         },

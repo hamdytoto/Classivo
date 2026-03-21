@@ -13,9 +13,10 @@ describe('LogoutService', () => {
     run: jest.fn(),
   };
   const refreshSessionPolicyMock = {
-    validateRefreshSession: jest.fn(),
+    validateRefreshSessionWithUser: jest.fn(),
   };
   const authSessionRepositoryMock = {
+    touchMetadata: jest.fn(),
     revokeById: jest.fn(),
   };
   const auditLogServiceMock = {
@@ -52,13 +53,15 @@ describe('LogoutService', () => {
   it('should revoke the session and audit logout', async () => {
     const tx = {};
 
-    refreshSessionPolicyMock.validateRefreshSession.mockResolvedValueOnce({
-      id: 'session-1',
-      user: {
-        id: 'user-1',
-        schoolId: 'school-1',
+    refreshSessionPolicyMock.validateRefreshSessionWithUser.mockResolvedValueOnce(
+      {
+        id: 'session-1',
+        user: {
+          id: 'user-1',
+          schoolId: 'school-1',
+        },
       },
-    });
+    );
     prismaTransactionServiceMock.run.mockImplementationOnce((callback) =>
       callback(tx),
     );
@@ -72,11 +75,19 @@ describe('LogoutService', () => {
       }),
     ).resolves.toBeUndefined();
 
+    expect(authSessionRepositoryMock.touchMetadata).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: 'session-1',
+        ipAddress: '127.0.0.1',
+        userAgent: 'jest',
+        lastUsedAt: expect.any(Date),
+      }),
+      tx,
+    );
     expect(
-      refreshSessionPolicyMock.validateRefreshSession,
+      refreshSessionPolicyMock.validateRefreshSessionWithUser,
     ).toHaveBeenCalledWith('refresh-token', {
       actorId: 'user-1',
-      includeUser: true,
     });
     expect(auditLogServiceMock.log).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -84,6 +95,9 @@ describe('LogoutService', () => {
         resourceId: 'session-1',
         actorId: 'user-1',
         schoolId: 'school-1',
+        metadata: expect.objectContaining({
+          lastUsedAt: expect.any(Date),
+        }),
       }),
       tx,
     );

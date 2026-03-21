@@ -187,7 +187,18 @@ describe('AuthController', () => {
 
   it('should delegate auth/sessions to auth service', async () => {
     sessionsMock.mockResolvedValueOnce({
-      data: [{ id: 'session-1' }, { id: 'session-2' }],
+      data: [
+        {
+          id: 'session-1',
+          lastUsedAt: new Date('2026-03-21T10:00:00.000Z'),
+          revokedAt: null,
+        },
+        {
+          id: 'session-2',
+          lastUsedAt: new Date('2026-03-21T09:00:00.000Z'),
+          revokedAt: null,
+        },
+      ],
       meta: {
         page: 1,
         limit: 20,
@@ -199,18 +210,29 @@ describe('AuthController', () => {
     const result = await controller.sessions('user-123', {
       page: 1,
       limit: 20,
-      sortBy: 'updatedAt',
+      sortBy: 'lastUsedAt',
       sortOrder: 'desc',
     } as never);
 
     expect(sessionsMock).toHaveBeenCalledWith('user-123', {
       page: 1,
       limit: 20,
-      sortBy: 'updatedAt',
+      sortBy: 'lastUsedAt',
       sortOrder: 'desc',
     });
     expect(result).toEqual({
-      data: [{ id: 'session-1' }, { id: 'session-2' }],
+      data: [
+        {
+          id: 'session-1',
+          lastUsedAt: new Date('2026-03-21T10:00:00.000Z'),
+          revokedAt: null,
+        },
+        {
+          id: 'session-2',
+          lastUsedAt: new Date('2026-03-21T09:00:00.000Z'),
+          revokedAt: null,
+        },
+      ],
       meta: {
         page: 1,
         limit: 20,

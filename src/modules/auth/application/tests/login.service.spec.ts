@@ -1,15 +1,15 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { AUDIT_ACTIONS } from '../../../common/audit/audit.constants';
-import { AuditLogService } from '../../../common/audit/audit-log.service';
-import { PrismaTransactionService } from '../../../common/prisma/prisma-transaction.service';
-import { AuthIdentityPolicy } from '../domain/policies/auth-identity.policy';
-import { AuthSessionRepository } from '../infrastructure/repositories/auth-session.repository';
-import { AuthUserRepository } from '../infrastructure/repositories/auth-user.repository';
-import { AuthTokenService } from '../infrastructure/security/auth-token.service';
-import { PasswordHasherService } from '../infrastructure/security/password-hasher.service';
-import { TokenHasherService } from '../infrastructure/security/token-hasher.service';
-import { LoginService } from './login.service';
+import { AUDIT_ACTIONS } from '../../../../common/audit/audit.constants';
+import { AuditLogService } from '../../../../common/audit/audit-log.service';
+import { PrismaTransactionService } from '../../../../common/prisma/prisma-transaction.service';
+import { AuthIdentityPolicy } from '../../domain/policies/auth-identity.policy';
+import { AuthSessionRepository } from '../../infrastructure/repositories/auth-session.repository';
+import { AuthUserRepository } from '../../infrastructure/repositories/auth-user.repository';
+import { AuthTokenService } from '../../infrastructure/security/auth-token.service';
+import { PasswordHasherService } from '../../infrastructure/security/password-hasher.service';
+import { TokenHasherService } from '../../infrastructure/security/token-hasher.service';
+import { LoginService } from '../login.service';
 
 describe('LoginService', () => {
   let service: LoginService;
@@ -148,6 +148,8 @@ describe('LoginService', () => {
     );
 
     const sessionPayload = authSessionRepositoryMock.create.mock.calls[0][0];
+
+    expect(sessionPayload.lastUsedAt).toBeInstanceOf(Date);
 
     expect(auditLogServiceMock.log).toHaveBeenCalledWith(
       expect.objectContaining({
