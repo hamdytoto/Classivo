@@ -69,6 +69,20 @@ Sprint 1 should remain an identity-and-access sprint. Do not pull academic domai
 - [x] Add DTO-level validation for all auth and role-management operations if any remain uncovered
 - [x] Add integration or e2e tests for `login -> refresh -> logout`, role assignment, and access denial cases
 - [x] Add Swagger response examples for auth errors, forbidden responses, and validation failures
+
+### Sprint 1 module hardening backlog
+
+- [x] Enforce tenant-aware scoping in `users` and `roles` so school-bound data access and role assignment cannot cross school boundaries unintentionally
+- [ ] Centralize identity normalization for email/phone/school code across `auth`, `users`, and `roles` flows instead of normalizing only inside auth policies
+- [ ] Replace the loose authenticated actor shape with a stronger shared contract so controllers do not need to resolve `id | userId | sub` manually
+- [ ] Align `users` and `roles` module structure with the `auth` module architecture, or remove placeholder folders and keep the simpler structure intentionally
+- [ ] Extract shared read/query concerns from `UsersService` and `RolesService` into reusable query/repository helpers to reduce duplicated pagination, sorting, and Prisma error handling
+- [ ] Expand audit coverage for sensitive mutations including role/permission create-update flows, school bootstrap, and password reset completion
+- [ ] Move password-reset email delivery to the queue layer with retry-safe behavior instead of sending it inline from the request flow
+- [ ] Relax login password validation so login checks credentials without enforcing the current strong-password policy on existing accounts
+- [ ] Reduce unnecessary module coupling such as `UsersModule -> AuthModule` where global guards and shared contracts would be enough
+- [ ] Add focused tests for `register-school`, forgot/reset-password flows, current-profile/session listing, tenant restrictions, and negative cases in user-role management
+
 ### Explicitly defer from Sprint 1
 
 - [ ] Schools, courses, classes, and enrollments CRUD

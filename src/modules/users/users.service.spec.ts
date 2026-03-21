@@ -1,4 +1,8 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { compareHash } from '../../common/security/hash.utils';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -96,6 +100,67 @@ describe('UsersService', () => {
     await expect(
       compareHash('Password123', createCall.data.passwordHash),
     ).resolves.toBe(true);
+  });
+
+  it('should scope created users to the actor school for non-super-admin actors', async () => {
+    (prismaMock.school.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: 'school-actor',
+    });
+    (prismaMock.user.create as jest.Mock).mockImplementationOnce(({ data }) =>
+      Promise.resolve({
+        id: 'user-123',
+        schoolId: data.schoolId,
+        email: data.email,
+        phone: data.phone,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        status: data.status ?? 'ACTIVE',
+        lastLoginAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }),
+    );
+
+    await service.create(
+      {
+        firstName: 'Jane',
+        lastName: 'Doe',
+        email: 'jane@classivo.dev',
+        password: 'Password123',
+      },
+      {
+        id: 'actor-1',
+        schoolId: 'school-actor',
+        roles: ['SCHOOL_ADMIN'],
+      },
+    );
+
+    expect(prismaMock.user.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          schoolId: 'school-actor',
+        }),
+      }),
+    );
+  });
+
+  it('should reject create when a scoped actor targets another school', async () => {
+    await expect(
+      service.create(
+        {
+          schoolId: 'school-other',
+          firstName: 'Jane',
+          lastName: 'Doe',
+          email: 'jane@classivo.dev',
+          password: 'Password123',
+        },
+        {
+          id: 'actor-1',
+          schoolId: 'school-actor',
+          roles: ['SCHOOL_ADMIN'],
+        },
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('should return assigned roles for an existing user', async () => {
@@ -308,11 +373,62 @@ describe('UsersService', () => {
     );
   });
 
+  it('should scope user listings to the actor school', async () => {
+    (prismaMock.user.findMany as jest.Mock).mockResolvedValueOnce([]);
+    (prismaMock.user.count as jest.Mock).mockResolvedValueOnce(0);
+    (prismaMock.$transaction as jest.Mock).mockImplementationOnce((operations) =>
+      Promise.all(operations),
+    );
+
+    await service.findAll(
+      {
+        page: 1,
+        limit: 10,
+      },
+      {
+        id: 'actor-1',
+        schoolId: 'school-1',
+        roles: ['SCHOOL_ADMIN'],
+      },
+    );
+
+    expect(prismaMock.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          schoolId: 'school-1',
+        },
+      }),
+    );
+  });
+
   it('should reject permission inspection when the user does not exist', async () => {
     (prismaMock.user.findUnique as jest.Mock).mockResolvedValueOnce(null);
 
     await expect(
       service.findPermissions('missing-user'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('should hide users from other schools for scoped actors', async () => {
+    (prismaMock.user.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: 'user-123',
+      schoolId: 'school-other',
+      email: 'member@classivo.dev',
+      phone: null,
+      firstName: 'Mina',
+      lastName: 'Member',
+      status: 'ACTIVE',
+      lastLoginAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await expect(
+      service.findOne('user-123', {
+        id: 'actor-1',
+        schoolId: 'school-1',
+        roles: ['SCHOOL_ADMIN'],
+      }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

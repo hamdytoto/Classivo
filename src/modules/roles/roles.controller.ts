@@ -14,13 +14,14 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import { CurrentUserId, Roles } from '../../common/decorators';
+import { CurrentUser, CurrentUserId, Roles } from '../../common/decorators';
 import { UuidParamDto } from '../../common/dto/uuid-param.dto';
 import {
   ApiAuthRequiredResponse,
   ApiRoleForbiddenResponse,
   ApiValidationFailureResponse,
 } from '../../common/swagger/api-error-responses';
+import type { AuthenticatedActor } from '../../common/types/request-context.type';
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { FindPermissionsQueryDto } from './dto/find-permissions-query.dto';
@@ -93,8 +94,9 @@ export class RolesController {
   findUsersForRole(
     @Param() params: UuidParamDto,
     @Query() query: FindRoleUsersQueryDto,
+    @CurrentUser() actor: AuthenticatedActor,
   ) {
-    return this.rolesService.findUsersForRole(params.id, query);
+    return this.rolesService.findUsersForRole(params.id, query, actor);
   }
 
   @Get(':id')
@@ -151,11 +153,13 @@ export class RolesController {
   assignRoleToUser(
     @Param() params: UserRoleParamsDto,
     @CurrentUserId() actorId: string,
+    @CurrentUser() actor: AuthenticatedActor,
   ) {
     return this.rolesService.assignRoleToUser(
       params.userId,
       params.roleId,
       actorId,
+      actor,
     );
   }
 
@@ -165,11 +169,13 @@ export class RolesController {
   removeRoleFromUser(
     @Param() params: UserRoleParamsDto,
     @CurrentUserId() actorId: string,
+    @CurrentUser() actor: AuthenticatedActor,
   ) {
     return this.rolesService.removeRoleFromUser(
       params.userId,
       params.roleId,
       actorId,
+      actor,
     );
   }
 }

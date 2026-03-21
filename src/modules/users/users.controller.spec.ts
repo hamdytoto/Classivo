@@ -2,6 +2,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Reflector } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PERMISSIONS_KEY } from '../../common/constants/auth.constants';
+import { JwtAuthGuard } from '../../common/guards';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 
@@ -16,13 +17,9 @@ describe('UsersController', () => {
     update: jest.fn(),
     me: jest.fn(),
   };
-  const jwtServiceMock = {
-    verifyAsync: jest.fn(),
+  const jwtAuthGuardMock = {
+    canActivate: jest.fn().mockResolvedValue(true),
   };
-  const reflectorMock = {
-    getAllAndOverride: jest.fn(),
-  };
-
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [UsersController],
@@ -32,12 +29,16 @@ describe('UsersController', () => {
           useValue: usersServiceMock,
         },
         {
+          provide: JwtAuthGuard,
+          useValue: jwtAuthGuardMock,
+        },
+        {
           provide: JwtService,
-          useValue: jwtServiceMock,
+          useValue: {},
         },
         {
           provide: Reflector,
-          useValue: reflectorMock,
+          useValue: {},
         },
       ],
     }).compile();
@@ -82,11 +83,7 @@ describe('UsersController', () => {
       id: 'user-123',
     });
 
-    const result = await controller.me({
-      user: {
-        id: 'user-123',
-      },
-    } as never);
+    const result = await controller.me('user-123');
 
     expect(usersServiceMock.me).toHaveBeenCalledWith('user-123');
     expect(result).toEqual({
@@ -118,9 +115,22 @@ describe('UsersController', () => {
         id: 'user-123',
       } as never,
       {} as never,
+      {
+        id: 'actor-1',
+        schoolId: 'school-1',
+        roles: ['SCHOOL_ADMIN'],
+      } as never,
     );
 
-    expect(usersServiceMock.findRoles).toHaveBeenCalledWith('user-123', {});
+    expect(usersServiceMock.findRoles).toHaveBeenCalledWith(
+      'user-123',
+      {},
+      {
+        id: 'actor-1',
+        schoolId: 'school-1',
+        roles: ['SCHOOL_ADMIN'],
+      },
+    );
     expect(result).toEqual({
       userId: 'user-123',
       data: [
@@ -170,11 +180,21 @@ describe('UsersController', () => {
         id: 'user-123',
       } as never,
       {} as never,
+      {
+        id: 'actor-1',
+        schoolId: 'school-1',
+        roles: ['SCHOOL_ADMIN'],
+      } as never,
     );
 
     expect(usersServiceMock.findPermissions).toHaveBeenCalledWith(
       'user-123',
       {},
+      {
+        id: 'actor-1',
+        schoolId: 'school-1',
+        roles: ['SCHOOL_ADMIN'],
+      },
     );
     expect(result).toEqual({
       userId: 'user-123',

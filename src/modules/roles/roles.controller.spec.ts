@@ -79,11 +79,21 @@ describe('RolesController', () => {
         id: 'role-1',
       } as never,
       {} as never,
+      {
+        id: 'actor-1',
+        schoolId: 'school-1',
+        roles: ['SUPER_ADMIN'],
+      } as never,
     );
 
     expect(rolesServiceMock.findUsersForRole).toHaveBeenCalledWith(
       'role-1',
       {},
+      {
+        id: 'actor-1',
+        schoolId: 'school-1',
+        roles: ['SUPER_ADMIN'],
+      },
     );
     expect(result).toEqual({
       roleId: 'role-1',
@@ -126,12 +136,22 @@ describe('RolesController', () => {
         roleId: 'role-1',
       } as never,
       'actor-1',
+      {
+        id: 'actor-1',
+        schoolId: 'school-1',
+        roles: ['SUPER_ADMIN'],
+      } as never,
     );
 
     expect(rolesServiceMock.assignRoleToUser).toHaveBeenCalledWith(
       'user-1',
       'role-1',
       'actor-1',
+      {
+        id: 'actor-1',
+        schoolId: 'school-1',
+        roles: ['SUPER_ADMIN'],
+      },
     );
     expect(result).toEqual({
       userId: 'user-1',

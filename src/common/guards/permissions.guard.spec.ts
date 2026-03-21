@@ -14,7 +14,9 @@ describe('PermissionsGuard', () => {
   } as unknown as Reflector;
 
   const findPermissionCodesByUserIdMock = jest.fn();
+  const findRoleCodesByUserIdMock = jest.fn();
   const authorizationReadRepositoryMock = {
+    findRoleCodesByUserId: findRoleCodesByUserIdMock,
     findPermissionCodesByUserId: findPermissionCodesByUserIdMock,
   } as unknown as AuthorizationReadRepository;
 
@@ -35,6 +37,7 @@ describe('PermissionsGuard', () => {
 
     await expect(guard.canActivate(context)).resolves.toBe(true);
     expect(findPermissionCodesByUserIdMock).not.toHaveBeenCalled();
+    expect(findRoleCodesByUserIdMock).not.toHaveBeenCalled();
   });
 
   it('should reject missing authenticated actor', async () => {
@@ -53,6 +56,7 @@ describe('PermissionsGuard', () => {
     getAllAndOverrideMock
       .mockReturnValueOnce(false)
       .mockReturnValueOnce(['roles.read', 'users.read']);
+    findRoleCodesByUserIdMock.mockResolvedValueOnce(['SUPER_ADMIN']);
     findPermissionCodesByUserIdMock.mockResolvedValueOnce([
       'roles.read',
       'users.read',
@@ -69,6 +73,7 @@ describe('PermissionsGuard', () => {
     await expect(guard.canActivate(context)).resolves.toBe(true);
     expect(request.user).toEqual({
       id: 'user-123',
+      roles: ['SUPER_ADMIN'],
       permissions: ['roles.read', 'users.read'],
     });
   });
@@ -77,6 +82,7 @@ describe('PermissionsGuard', () => {
     getAllAndOverrideMock
       .mockReturnValueOnce(false)
       .mockReturnValueOnce(['roles.read', 'users.write']);
+    findRoleCodesByUserIdMock.mockResolvedValueOnce(['TEACHER']);
     findPermissionCodesByUserIdMock.mockResolvedValueOnce(['roles.read']);
 
     const context = createHttpExecutionContext({

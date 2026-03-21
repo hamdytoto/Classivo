@@ -6,8 +6,6 @@ import {
   Patch,
   Post,
   Query,
-  Req,
-  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -16,8 +14,7 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
-import type { Request } from 'express';
-import { Permissions } from '../../common/decorators';
+import { CurrentUser, CurrentUserId, Permissions } from '../../common/decorators';
 import { UuidParamDto } from '../../common/dto/uuid-param.dto';
 import { JwtAuthGuard } from '../../common/guards';
 import {
@@ -33,10 +30,6 @@ import { FindUsersQueryDto } from './dto/find-users-query.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
 
-type RequestWithActor = Request & {
-  user?: AuthenticatedActor;
-};
-
 @ApiTags('users')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
@@ -50,8 +43,11 @@ export class UsersController {
   @ApiAuthRequiredResponse('/api/v1/users')
   @ApiPermissionForbiddenResponse('/api/v1/users')
   @ApiValidationFailureResponse('/api/v1/users')
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
+  create(
+    @Body() createUserDto: CreateUserDto,
+    @CurrentUser() actor: AuthenticatedActor,
+  ) {
+    return this.usersService.create(createUserDto, actor);
   }
 
   @Get()
@@ -60,25 +56,17 @@ export class UsersController {
   @ApiAuthRequiredResponse('/api/v1/users')
   @ApiPermissionForbiddenResponse('/api/v1/users')
   @ApiValidationFailureResponse('/api/v1/users')
-  findAll(@Query() query: FindUsersQueryDto) {
-    return this.usersService.findAll(query);
+  findAll(
+    @Query() query: FindUsersQueryDto,
+    @CurrentUser() actor: AuthenticatedActor,
+  ) {
+    return this.usersService.findAll(query, actor);
   }
 
   @Get('me')
   @ApiOperation({ summary: 'Get current user profile' })
   @ApiAuthRequiredResponse('/api/v1/users/me')
-  me(@Req() request: RequestWithActor) {
-    const actor = request.user;
-    const userId = actor?.id ?? actor?.userId ?? actor?.sub;
-
-    if (!userId) {
-      throw new UnauthorizedException({
-        code: 'AUTH_REQUIRED',
-        message:
-          'Authenticated user is required. Provide a valid access token.',
-      });
-    }
-
+  me(@CurrentUserId() userId: string) {
     return this.usersService.me(userId);
   }
 
@@ -92,8 +80,9 @@ export class UsersController {
   findRoles(
     @Param() params: UuidParamDto,
     @Query() query: FindUserRolesQueryDto,
+    @CurrentUser() actor: AuthenticatedActor,
   ) {
-    return this.usersService.findRoles(params.id, query);
+    return this.usersService.findRoles(params.id, query, actor);
   }
 
   @Get(':id/permissions')
@@ -106,8 +95,9 @@ export class UsersController {
   findPermissions(
     @Param() params: UuidParamDto,
     @Query() query: FindUserPermissionsQueryDto,
+    @CurrentUser() actor: AuthenticatedActor,
   ) {
-    return this.usersService.findPermissions(params.id, query);
+    return this.usersService.findPermissions(params.id, query, actor);
   }
 
   @Get(':id')
@@ -117,8 +107,11 @@ export class UsersController {
   @ApiAuthRequiredResponse('/api/v1/users/{id}')
   @ApiPermissionForbiddenResponse('/api/v1/users/{id}')
   @ApiValidationFailureResponse('/api/v1/users/{id}')
-  findOne(@Param() params: UuidParamDto) {
-    return this.usersService.findOne(params.id);
+  findOne(
+    @Param() params: UuidParamDto,
+    @CurrentUser() actor: AuthenticatedActor,
+  ) {
+    return this.usersService.findOne(params.id, actor);
   }
 
   @Patch(':id')
@@ -128,7 +121,11 @@ export class UsersController {
   @ApiAuthRequiredResponse('/api/v1/users/{id}')
   @ApiPermissionForbiddenResponse('/api/v1/users/{id}')
   @ApiValidationFailureResponse('/api/v1/users/{id}')
-  update(@Param() params: UuidParamDto, @Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.update(params.id, updateUserDto);
+  update(
+    @Param() params: UuidParamDto,
+    @Body() updateUserDto: UpdateUserDto,
+    @CurrentUser() actor: AuthenticatedActor,
+  ) {
+    return this.usersService.update(params.id, updateUserDto, actor);
   }
 }

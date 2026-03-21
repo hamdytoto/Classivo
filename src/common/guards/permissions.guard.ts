@@ -54,13 +54,14 @@ export class PermissionsGuard implements CanActivate {
       });
     }
 
-    const userPermissions =
-      await this.authorizationReadRepository.findPermissionCodesByUserId(
-        actorId,
-      );
+    const [userRoles, userPermissions] = await Promise.all([
+      this.authorizationReadRepository.findRoleCodesByUserId(actorId),
+      this.authorizationReadRepository.findPermissionCodesByUserId(actorId),
+    ]);
 
     request.user = {
       ...actor,
+      roles: userRoles,
       permissions: userPermissions,
     };
 

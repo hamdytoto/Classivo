@@ -1,4 +1,8 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AUDIT_ACTIONS } from '../../common/audit/audit.constants';
 import { AuditLogService } from '../../common/audit/audit-log.service';
@@ -144,6 +148,83 @@ describe('RolesService', () => {
     await expect(
       service.findUsersForRole('missing-role'),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('should scope role-user inspection to the actor school', async () => {
+    (prismaMock.role.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: 'role-1',
+      code: 'SCHOOL_ADMIN',
+      name: 'School Admin',
+      users: [
+        {
+          assignedAt: new Date('2026-03-14T00:00:00.000Z'),
+          user: {
+            id: 'user-1',
+            schoolId: 'school-1',
+            email: 'admin@classivo.dev',
+            phone: null,
+            firstName: 'Admin',
+            lastName: 'User',
+            status: 'ACTIVE',
+            lastLoginAt: null,
+            createdAt: new Date('2026-03-13T00:00:00.000Z'),
+            updatedAt: new Date('2026-03-13T00:00:00.000Z'),
+          },
+        },
+        {
+          assignedAt: new Date('2026-03-14T00:00:00.000Z'),
+          user: {
+            id: 'user-2',
+            schoolId: 'school-2',
+            email: 'other@classivo.dev',
+            phone: null,
+            firstName: 'Other',
+            lastName: 'User',
+            status: 'ACTIVE',
+            lastLoginAt: null,
+            createdAt: new Date('2026-03-13T00:00:00.000Z'),
+            updatedAt: new Date('2026-03-13T00:00:00.000Z'),
+          },
+        },
+      ],
+    });
+
+    await expect(
+      service.findUsersForRole(
+        'role-1',
+        {},
+        {
+          id: 'actor-1',
+          schoolId: 'school-1',
+          roles: ['SCHOOL_ADMIN'],
+        },
+      ),
+    ).resolves.toEqual({
+      roleId: 'role-1',
+      roleCode: 'SCHOOL_ADMIN',
+      roleName: 'School Admin',
+      data: [
+        {
+          id: 'user-1',
+          schoolId: 'school-1',
+          email: 'admin@classivo.dev',
+          phone: null,
+          firstName: 'Admin',
+          lastName: 'User',
+          status: 'ACTIVE',
+          lastLoginAt: null,
+          createdAt: new Date('2026-03-13T00:00:00.000Z'),
+          updatedAt: new Date('2026-03-13T00:00:00.000Z'),
+          assignedAt: new Date('2026-03-14T00:00:00.000Z'),
+        },
+      ],
+      meta: {
+        page: 1,
+        limit: 20,
+        total: 1,
+        totalPages: 1,
+      },
+    });
   });
 
   it('should paginate filtered role listings with shared metadata', async () => {
@@ -308,5 +389,54 @@ describe('RolesService', () => {
       }),
       tx,
     );
+  });
+
+  it('should reject cross-school role assignment for scoped actors', async () => {
+    (prismaMock.role.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: 'role-1',
+      code: 'SCHOOL_ADMIN',
+      name: 'School Admin',
+    });
+    (prismaMock.user.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: 'user-1',
+      schoolId: 'school-2',
+    });
+    (prismaMock.userRole.findUnique as jest.Mock).mockResolvedValueOnce(null);
+
+    await expect(
+      service.assignRoleToUser(
+        'user-1',
+        'role-1',
+        'actor-1',
+        {
+          id: 'actor-1',
+          schoolId: 'school-1',
+          roles: ['SCHOOL_ADMIN'],
+        },
+      ),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('should reject role-user queries with a foreign school filter for scoped actors', async () => {
+    (prismaMock.role.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: 'role-1',
+      code: 'SCHOOL_ADMIN',
+      name: 'School Admin',
+      users: [],
+    });
+
+    await expect(
+      service.findUsersForRole(
+        'role-1',
+        {
+          schoolId: 'school-2',
+        },
+        {
+          id: 'actor-1',
+          schoolId: 'school-1',
+          roles: ['SCHOOL_ADMIN'],
+        },
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

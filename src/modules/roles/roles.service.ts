@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -13,6 +14,8 @@ import {
   resolvePaginationParams,
 } from '../../common/pagination/pagination.util';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import type { AuthenticatedActor } from '../../common/types/request-context.type';
+import { Role } from '../../common/enums/roles.enum';
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { FindPermissionsQueryDto } from './dto/find-permissions-query.dto';
@@ -135,7 +138,11 @@ export class RolesService {
     return role;
   }
 
-  async findUsersForRole(roleId: string, query: FindRoleUsersQueryDto = {}) {
+  async findUsersForRole(
+    roleId: string,
+    query: FindRoleUsersQueryDto = {},
+    actor?: AuthenticatedActor,
+  ) {
     const role = await this.prisma.role.findUnique({
       where: { id: roleId },
       select: ROLE_USERS_SELECT,
@@ -148,13 +155,14 @@ export class RolesService {
       });
     }
 
-    const sortBy = query.sortBy ?? 'assignedAt';
-    const sortOrder = query.sortOrder ?? 'desc';
+    const scopedQuery = this.applySchoolScopeToRoleUsersQuery(query, actor);
+    const sortBy = scopedQuery.sortBy ?? 'assignedAt';
+    const sortOrder = scopedQuery.sortOrder ?? 'desc';
     let users = role.users.map((assignment) => ({
       assignedAt: assignment.assignedAt,
       ...assignment.user,
     }));
-    users = filterRoleUsers(users, query);
+    users = filterRoleUsers(users, scopedQuery);
 
     users.sort((left, right) =>
       this.compareValues(left[sortBy], right[sortBy], sortOrder),
@@ -348,7 +356,12 @@ export class RolesService {
     return this.findOneRole(roleId);
   }
 
-  async assignRoleToUser(userId: string, roleId: string, actorId?: string) {
+  async assignRoleToUser(
+    userId: string,
+    roleId: string,
+    actorId?: string,
+    actor?: AuthenticatedActor,
+  ) {
     const [role, user, existingAssignment] = await Promise.all([
       this.ensureRoleExists(roleId),
       this.ensureUserExists(userId),
@@ -364,6 +377,8 @@ export class RolesService {
         },
       }),
     ]);
+
+    this.ensureActorCanAccessUserSchool(actor, user.schoolId);
 
     try {
       await this.prisma.$transaction(async (tx) => {
@@ -411,11 +426,18 @@ export class RolesService {
     };
   }
 
-  async removeRoleFromUser(userId: string, roleId: string, actorId?: string) {
+  async removeRoleFromUser(
+    userId: string,
+    roleId: string,
+    actorId?: string,
+    actor?: AuthenticatedActor,
+  ) {
     const [role, user] = await Promise.all([
       this.ensureRoleExists(roleId),
       this.ensureUserExists(userId),
     ]);
+
+    this.ensureActorCanAccessUserSchool(actor, user.schoolId);
 
     try {
       await this.prisma.$transaction(async (tx) => {
@@ -503,6 +525,70 @@ export class RolesService {
     }
 
     return user;
+  }
+
+  private applySchoolScopeToRoleUsersQuery(
+    query: FindRoleUsersQueryDto,
+    actor?: AuthenticatedActor,
+  ): FindRoleUsersQueryDto {
+    const schoolId = this.resolveRequestedSchoolId(actor, query.schoolId);
+
+    return {
+      ...query,
+      ...(schoolId ? { schoolId } : {}),
+    };
+  }
+
+  private resolveRequestedSchoolId(
+    actor?: AuthenticatedActor,
+    requestedSchoolId?: string,
+  ): string | undefined {
+    if (!actor || this.isSuperAdmin(actor)) {
+      return requestedSchoolId;
+    }
+
+    if (!actor.schoolId) {
+      throw new ForbiddenException({
+        code: 'TENANT_SCOPE_REQUIRED',
+        message: 'Authenticated actor is not bound to a school scope',
+      });
+    }
+
+    if (requestedSchoolId && requestedSchoolId !== actor.schoolId) {
+      throw new ForbiddenException({
+        code: 'TENANT_SCOPE_VIOLATION',
+        message: 'You cannot access role users outside your school scope',
+      });
+    }
+
+    return actor.schoolId;
+  }
+
+  private ensureActorCanAccessUserSchool(
+    actor: AuthenticatedActor | undefined,
+    userSchoolId: string | null,
+  ): void {
+    if (!actor || this.isSuperAdmin(actor)) {
+      return;
+    }
+
+    if (!actor.schoolId) {
+      throw new ForbiddenException({
+        code: 'TENANT_SCOPE_REQUIRED',
+        message: 'Authenticated actor is not bound to a school scope',
+      });
+    }
+
+    if (userSchoolId !== actor.schoolId) {
+      throw new NotFoundException({
+        code: 'USER_NOT_FOUND',
+        message: 'User not found',
+      });
+    }
+  }
+
+  private isSuperAdmin(actor: AuthenticatedActor): boolean {
+    return actor.roles?.includes(Role.SUPER_ADMIN) ?? false;
   }
 
   private handlePrismaError(error: unknown): never {
