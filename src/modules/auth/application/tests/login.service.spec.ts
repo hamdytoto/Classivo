@@ -187,4 +187,37 @@ describe('LoginService', () => {
       }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
+
+  it('should reject login for a suspended account before issuing tokens', async () => {
+    authIdentityPolicyMock.resolveLoginIdentifier.mockReturnValueOnce({
+      email: 'user@classivo.dev',
+    });
+    authUserRepositoryMock.findForLogin.mockResolvedValueOnce({
+      id: 'user-1',
+      status: 'SUSPENDED',
+      passwordHash: 'stored-hash',
+    });
+    passwordHasherServiceMock.compare.mockResolvedValueOnce(true);
+    authIdentityPolicyMock.assertUserIsActive.mockImplementationOnce(() => {
+      throw new UnauthorizedException({
+        code: 'ACCOUNT_SUSPENDED',
+        message: 'Account is suspended',
+      });
+    });
+
+    await expect(
+      service.execute({
+        email: 'user@classivo.dev',
+        password: 'Password123!',
+      }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(authIdentityPolicyMock.assertUserIsActive).toHaveBeenCalledWith(
+      'SUSPENDED',
+    );
+    expect(
+      authUserRepositoryMock.touchLastLoginAndGetAuthUser,
+    ).not.toHaveBeenCalled();
+    expect(authTokenServiceMock.issueTokenPair).not.toHaveBeenCalled();
+  });
 });

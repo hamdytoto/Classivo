@@ -40,11 +40,24 @@ export class AuthIdentityPolicy {
   }
 
   assertUserIsActive(status: UserStatus): void {
-    if (status !== UserStatus.ACTIVE) {
-      throw new UnauthorizedException({
-        code: AUTH_ERROR_CODES.accountInactive,
-        message: 'Account is not active',
-      });
+    switch (status) {
+      case UserStatus.ACTIVE:
+        return;
+      case UserStatus.SUSPENDED:
+        throw new UnauthorizedException({
+          code: AUTH_ERROR_CODES.accountSuspended,
+          message: 'Account is suspended',
+        });
+      case UserStatus.DISABLED:
+        throw new UnauthorizedException({
+          code: AUTH_ERROR_CODES.accountDisabled,
+          message: 'Account is disabled',
+        });
+      default:
+        throw new UnauthorizedException({
+          code: AUTH_ERROR_CODES.accountInactive,
+          message: 'Account is not active',
+        });
     }
   }
 }

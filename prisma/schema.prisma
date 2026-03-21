@@ -9,7 +9,7 @@ datasource db {
 
 enum UserStatus {
   ACTIVE
-  INACTIVE
+  DISABLED
   SUSPENDED
 }
 

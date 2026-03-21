@@ -1,5 +1,7 @@
 export const AUTH_ERROR_CODES = {
+  accountDisabled: 'ACCOUNT_DISABLED',
   accountInactive: 'ACCOUNT_INACTIVE',
+  accountSuspended: 'ACCOUNT_SUSPENDED',
   baselineRoleNotFound: 'BASELINE_ROLE_NOT_FOUND',
   invalidCredentials: 'INVALID_CREDENTIALS',
   invalidCurrentPassword: 'INVALID_CURRENT_PASSWORD',

@@ -107,6 +107,11 @@ describe('RefreshSessionService', () => {
       }),
     );
 
+    expect(
+      refreshSessionPolicyMock.validateRefreshSessionWithUser,
+    ).toHaveBeenCalledWith('refresh-token', {
+      revokeOnInactiveUser: true,
+    });
     expect(authSessionRepositoryMock.rotate).toHaveBeenCalledWith(
       expect.objectContaining({
         sessionId: 'session-1',
