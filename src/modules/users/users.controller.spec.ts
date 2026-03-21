@@ -113,7 +113,12 @@ describe('UsersController', () => {
       },
     });
 
-    const result = await controller.findRoles('user-123', {} as never);
+    const result = await controller.findRoles(
+      {
+        id: 'user-123',
+      } as never,
+      {} as never,
+    );
 
     expect(usersServiceMock.findRoles).toHaveBeenCalledWith('user-123', {});
     expect(result).toEqual({
@@ -160,9 +165,17 @@ describe('UsersController', () => {
       },
     });
 
-    const result = await controller.findPermissions('user-123', {} as never);
+    const result = await controller.findPermissions(
+      {
+        id: 'user-123',
+      } as never,
+      {} as never,
+    );
 
-    expect(usersServiceMock.findPermissions).toHaveBeenCalledWith('user-123', {});
+    expect(usersServiceMock.findPermissions).toHaveBeenCalledWith(
+      'user-123',
+      {},
+    );
     expect(result).toEqual({
       userId: 'user-123',
       data: [

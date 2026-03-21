@@ -10,13 +10,16 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { CurrentUserId, Roles } from '../../common/decorators';
+import { UuidParamDto } from '../../common/dto/uuid-param.dto';
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { FindPermissionsQueryDto } from './dto/find-permissions-query.dto';
 import { FindRolesQueryDto } from './dto/find-roles-query.dto';
 import { FindRoleUsersQueryDto } from './dto/find-role-users-query.dto';
+import { RolePermissionParamsDto } from './dto/role-permission-params.dto';
 import { UpdatePermissionDto } from './dto/update-permission.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
+import { UserRoleParamsDto } from './dto/user-role-params.dto';
 import { RolesService } from './roles.service';
 
 @ApiTags('roles')
@@ -52,51 +55,53 @@ export class RolesController {
   @Get('permissions/:id')
   @ApiOperation({ summary: 'Get permission by id' })
   @ApiParam({ name: 'id', format: 'uuid' })
-  findOnePermission(@Param('id') id: string) {
-    return this.rolesService.findOnePermission(id);
+  findOnePermission(@Param() params: UuidParamDto) {
+    return this.rolesService.findOnePermission(params.id);
   }
 
   @Patch('permissions/:id')
   @ApiOperation({ summary: 'Update permission by id' })
   @ApiParam({ name: 'id', format: 'uuid' })
-  updatePermission(@Param('id') id: string, @Body() dto: UpdatePermissionDto) {
-    return this.rolesService.updatePermission(id, dto);
+  updatePermission(
+    @Param() params: UuidParamDto,
+    @Body() dto: UpdatePermissionDto,
+  ) {
+    return this.rolesService.updatePermission(params.id, dto);
   }
 
   @Get(':id/users')
   @ApiOperation({ summary: 'Inspect users assigned to a role' })
   @ApiParam({ name: 'id', format: 'uuid' })
   findUsersForRole(
-    @Param('id') id: string,
+    @Param() params: UuidParamDto,
     @Query() query: FindRoleUsersQueryDto,
   ) {
-    return this.rolesService.findUsersForRole(id, query);
+    return this.rolesService.findUsersForRole(params.id, query);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get role by id' })
   @ApiParam({ name: 'id', format: 'uuid' })
-  findOneRole(@Param('id') id: string) {
-    return this.rolesService.findOneRole(id);
+  findOneRole(@Param() params: UuidParamDto) {
+    return this.rolesService.findOneRole(params.id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update role by id' })
   @ApiParam({ name: 'id', format: 'uuid' })
-  updateRole(@Param('id') id: string, @Body() dto: UpdateRoleDto) {
-    return this.rolesService.updateRole(id, dto);
+  updateRole(@Param() params: UuidParamDto, @Body() dto: UpdateRoleDto) {
+    return this.rolesService.updateRole(params.id, dto);
   }
 
   @Post(':roleId/permissions/:permissionId')
   @ApiOperation({ summary: 'Assign permission to role' })
   assignPermissionToRole(
-    @Param('roleId') roleId: string,
-    @Param('permissionId') permissionId: string,
+    @Param() params: RolePermissionParamsDto,
     @CurrentUserId() actorId: string,
   ) {
     return this.rolesService.assignPermissionToRole(
-      roleId,
-      permissionId,
+      params.roleId,
+      params.permissionId,
       actorId,
     );
   }
@@ -104,13 +109,12 @@ export class RolesController {
   @Delete(':roleId/permissions/:permissionId')
   @ApiOperation({ summary: 'Remove permission from role' })
   removePermissionFromRole(
-    @Param('roleId') roleId: string,
-    @Param('permissionId') permissionId: string,
+    @Param() params: RolePermissionParamsDto,
     @CurrentUserId() actorId: string,
   ) {
     return this.rolesService.removePermissionFromRole(
-      roleId,
-      permissionId,
+      params.roleId,
+      params.permissionId,
       actorId,
     );
   }
@@ -118,20 +122,26 @@ export class RolesController {
   @Post('users/:userId/:roleId')
   @ApiOperation({ summary: 'Assign role to user' })
   assignRoleToUser(
-    @Param('userId') userId: string,
-    @Param('roleId') roleId: string,
+    @Param() params: UserRoleParamsDto,
     @CurrentUserId() actorId: string,
   ) {
-    return this.rolesService.assignRoleToUser(userId, roleId, actorId);
+    return this.rolesService.assignRoleToUser(
+      params.userId,
+      params.roleId,
+      actorId,
+    );
   }
 
   @Delete('users/:userId/:roleId')
   @ApiOperation({ summary: 'Remove role from user' })
   removeRoleFromUser(
-    @Param('userId') userId: string,
-    @Param('roleId') roleId: string,
+    @Param() params: UserRoleParamsDto,
     @CurrentUserId() actorId: string,
   ) {
-    return this.rolesService.removeRoleFromUser(userId, roleId, actorId);
+    return this.rolesService.removeRoleFromUser(
+      params.userId,
+      params.roleId,
+      actorId,
+    );
   }
 }

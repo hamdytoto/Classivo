@@ -1,7 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsString, Length, Matches } from 'class-validator';
+import { AtLeastOneOf } from '../../../common/validators/at-least-one-of.validator';
 
 export class UpdatePermissionDto {
+  @AtLeastOneOf(['code', 'name'], {
+    message: 'Provide at least one field to update',
+  })
+  private readonly _atLeastOneField?: never;
+
   @ApiPropertyOptional({ example: 'users.manage' })
   @IsOptional()
   @IsString()
@@ -18,4 +24,3 @@ export class UpdatePermissionDto {
   @Length(2, 100)
   name?: string;
 }
-

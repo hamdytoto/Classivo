@@ -66,7 +66,7 @@ Sprint 1 should remain an identity-and-access sprint. Do not pull academic domai
 - [x] Add consistent audit events for login, refresh, logout, password change, role assignment, and permission changes -> see `src/common/audit/*`, `src/modules/auth/*`, and `src/modules/roles/*`
 - [x] Store richer session metadata: IP, user agent, last used at, revoked at -> see `prisma/schema.prisma`, `src/modules/auth/infrastructure/repositories/auth-session.repository.ts`, and `src/modules/auth/application/*`
 - [x] Add account status enforcement (`ACTIVE`, `SUSPENDED`, `DISABLED`) inside login and token refresh flows
-- [ ] Add DTO-level validation for all auth and role-management operations if any remain uncovered
+- [x] Add DTO-level validation for all auth and role-management operations if any remain uncovered
 - [ ] Add integration or e2e tests for `login -> refresh -> logout`, role assignment, and access denial cases
 - [ ] Add Swagger response examples for auth errors, forbidden responses, and validation failures
 

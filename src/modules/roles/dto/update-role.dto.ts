@@ -1,7 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsString, Length, Matches } from 'class-validator';
+import { AtLeastOneOf } from '../../../common/validators/at-least-one-of.validator';
 
 export class UpdateRoleDto {
+  @AtLeastOneOf(['code', 'name'], {
+    message: 'Provide at least one field to update',
+  })
+  private readonly _atLeastOneField?: never;
+
   @ApiPropertyOptional({ example: 'SCHOOL_ADMIN' })
   @IsOptional()
   @IsString()
@@ -17,4 +23,3 @@ export class UpdateRoleDto {
   @Length(2, 100)
   name?: string;
 }
-

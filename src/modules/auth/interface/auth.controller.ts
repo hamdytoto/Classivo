@@ -24,6 +24,7 @@ import { LogoutAllDto } from './dto/logout-all.dto';
 import { LogoutDto } from './dto/logout.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterSchoolDto } from './dto/register-school.dto';
+import { RevokeSessionParamsDto } from './dto/revoke-session-params.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 
 type SessionRequest = Request & {
@@ -90,10 +91,10 @@ export class AuthController {
     summary: 'Revoke a specific active session for the authenticated user',
   })
   async revokeSession(
-    @Param('sessionId') sessionId: string,
+    @Param() params: RevokeSessionParamsDto,
     @CurrentUserId() actorId: string,
   ) {
-    await this.authService.revokeSession(sessionId, actorId);
+    await this.authService.revokeSession(params.sessionId, actorId);
   }
 
   @Post('refresh')

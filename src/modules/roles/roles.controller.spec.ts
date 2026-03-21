@@ -74,7 +74,12 @@ describe('RolesController', () => {
       },
     });
 
-    const result = await controller.findUsersForRole('role-1', {} as never);
+    const result = await controller.findUsersForRole(
+      {
+        id: 'role-1',
+      } as never,
+      {} as never,
+    );
 
     expect(rolesServiceMock.findUsersForRole).toHaveBeenCalledWith(
       'role-1',
@@ -116,8 +121,10 @@ describe('RolesController', () => {
     });
 
     const result = await controller.assignRoleToUser(
-      'user-1',
-      'role-1',
+      {
+        userId: 'user-1',
+        roleId: 'role-1',
+      } as never,
       'actor-1',
     );
 

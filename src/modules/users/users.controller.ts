@@ -13,6 +13,7 @@ import {
 import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { Permissions } from '../../common/decorators';
+import { UuidParamDto } from '../../common/dto/uuid-param.dto';
 import { JwtAuthGuard } from '../../common/guards';
 import type { AuthenticatedActor } from '../../common/types/request-context.type';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -67,8 +68,11 @@ export class UsersController {
   @Permissions('users.read')
   @ApiOperation({ summary: 'Inspect roles assigned to a user' })
   @ApiParam({ name: 'id', format: 'uuid' })
-  findRoles(@Param('id') id: string, @Query() query: FindUserRolesQueryDto) {
-    return this.usersService.findRoles(id, query);
+  findRoles(
+    @Param() params: UuidParamDto,
+    @Query() query: FindUserRolesQueryDto,
+  ) {
+    return this.usersService.findRoles(params.id, query);
   }
 
   @Get(':id/permissions')
@@ -76,25 +80,25 @@ export class UsersController {
   @ApiOperation({ summary: 'Inspect effective permissions for a user' })
   @ApiParam({ name: 'id', format: 'uuid' })
   findPermissions(
-    @Param('id') id: string,
+    @Param() params: UuidParamDto,
     @Query() query: FindUserPermissionsQueryDto,
   ) {
-    return this.usersService.findPermissions(id, query);
+    return this.usersService.findPermissions(params.id, query);
   }
 
   @Get(':id')
   @Permissions('users.read')
   @ApiOperation({ summary: 'Find user by id' })
   @ApiParam({ name: 'id', format: 'uuid' })
-  findOne(@Param('id') id: string) {
-    return this.usersService.findOne(id);
+  findOne(@Param() params: UuidParamDto) {
+    return this.usersService.findOne(params.id);
   }
 
   @Patch(':id')
   @Permissions('users.manage')
   @ApiOperation({ summary: 'Update user by id' })
   @ApiParam({ name: 'id', format: 'uuid' })
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.update(id, updateUserDto);
+  update(@Param() params: UuidParamDto, @Body() updateUserDto: UpdateUserDto) {
+    return this.usersService.update(params.id, updateUserDto);
   }
 }

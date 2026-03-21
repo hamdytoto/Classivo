@@ -245,7 +245,12 @@ describe('AuthController', () => {
   it('should delegate session revocation to auth service', async () => {
     revokeSessionMock.mockResolvedValueOnce(undefined);
 
-    const result = await controller.revokeSession('session-123', 'user-123');
+    const result = await controller.revokeSession(
+      {
+        sessionId: 'session-123',
+      } as never,
+      'user-123',
+    );
 
     expect(revokeSessionMock).toHaveBeenCalledWith('session-123', 'user-123');
     expect(result).toBeUndefined();
