@@ -3,7 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PERMISSIONS_KEY } from '../../common/constants/auth.constants';
 import { JwtAuthGuard } from '../../common/guards';
-import { UsersController } from './users.controller';
+import { UsersController } from './interface/users.controller';
 import { UsersService } from './users.service';
 
 describe('UsersController', () => {

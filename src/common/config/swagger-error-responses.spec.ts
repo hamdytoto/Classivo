@@ -12,9 +12,9 @@ import {
 import { AuthorizationReadRepository } from '../repositories/authorization-read.repository';
 import { AuthService } from '../../modules/auth/auth.service';
 import { AuthController } from '../../modules/auth/interface/auth.controller';
-import { RolesController } from '../../modules/roles/roles.controller';
+import { RolesController } from '../../modules/roles/interface/roles.controller';
 import { RolesService } from '../../modules/roles/roles.service';
-import { UsersController } from '../../modules/users/users.controller';
+import { UsersController } from '../../modules/users/interface/users.controller';
 import { UsersService } from '../../modules/users/users.service';
 
 describe('Swagger error response examples', () => {

@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ROLES_KEY } from '../../common/constants/auth.constants';
-import { RolesController } from './roles.controller';
+import { RolesController } from './interface/roles.controller';
 import { RolesService } from './roles.service';
 
 describe('RolesController', () => {

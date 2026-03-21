@@ -31,9 +31,15 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterSchoolDto } from './dto/register-school.dto';
 import { RevokeSessionParamsDto } from './dto/revoke-session-params.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { ApiChangePasswordUnauthorized, ApiLoginUnauthorized, ApiLogoutUnauthorized, ApiRefreshUnauthorized, ApiResetPasswordUnauthorized } from 'src/common/swagger/auth-docs.decorators';
-import { AUTH_PATHS } from 'src/common/swagger/auth-unauthorized-examples';
-import { Role } from 'src/common/enums/roles.enum';
+import {
+  ApiChangePasswordUnauthorized,
+  ApiLoginUnauthorized,
+  ApiLogoutUnauthorized,
+  ApiRefreshUnauthorized,
+  ApiResetPasswordUnauthorized,
+} from '../../../common/swagger/auth-docs.decorators';
+import { AUTH_PATHS } from '../../../common/swagger/auth-unauthorized-examples';
+import { Role } from '../../../common/enums/roles.enum';
 
 type SessionRequest = Request & {
   ip?: string;
