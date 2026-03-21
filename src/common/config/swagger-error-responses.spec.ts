@@ -137,10 +137,7 @@ describe('Swagger error response examples', () => {
   });
 });
 
-function findPath(
-  paths: unknown,
-  expectedPath: string,
-): string {
+function findPath(paths: unknown, expectedPath: string): string {
   const pathMap = toRecord(paths, 'Swagger paths');
   const exactMatch = Object.keys(pathMap).find((path) => path === expectedPath);
 

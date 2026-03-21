@@ -22,7 +22,9 @@ import { AuthorizationReadRepository } from './common/repositories/authorization
     ...FEATURE_MODULES,
   ],
   controllers: [AppController, HealthController],
-  providers: [AppService, AuthorizationReadRepository,
+  providers: [
+    AppService,
+    AuthorizationReadRepository,
     {
       provide: 'APP_GUARD',
       useClass: JwtAuthGuard,
@@ -33,8 +35,9 @@ import { AuthorizationReadRepository } from './common/repositories/authorization
     },
     {
       provide: 'APP_GUARD',
-      useClass: PermissionsGuard
-    }],
+      useClass: PermissionsGuard,
+    },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
