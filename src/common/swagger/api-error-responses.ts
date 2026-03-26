@@ -127,7 +127,7 @@ export function ApiValidationFailureResponse(path: string) {
                 },
                 {
                   field: 'password',
-                  message: 'password is not strong enough',
+                  message: 'password should not be empty',
                 },
               ],
             },

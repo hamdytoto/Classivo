@@ -79,7 +79,7 @@ Sprint 1 should remain an identity-and-access sprint. Do not pull academic domai
 - [x] Extract shared read/query concerns from `UsersService` and `RolesService` into reusable query/repository helpers to reduce duplicated pagination, sorting, and Prisma error handling
 - [x] Expand audit coverage for sensitive mutations including role/permission create-update flows, school bootstrap, and password reset completion -> see `src/common/audit/*`, `src/modules/roles/*`, and `src/modules/auth/*`
 - [x] Move password-reset email delivery to the queue layer with retry-safe behavior instead of sending it inline from the request flow -> see `src/modules/auth/application/request-password-reset.service.ts`, `src/modules/auth/infrastructure/queue/*`, and `src/common/queue/*`
-- [ ] Relax login password validation so login checks credentials without enforcing the current strong-password policy on existing accounts
+- [x] Relax login password validation so login checks credentials without enforcing the current strong-password policy on existing accounts -> see `src/modules/auth/interface/dto/login.dto.ts`
 - [ ] Reduce unnecessary module coupling such as `UsersModule -> AuthModule` where global guards and shared contracts would be enough
 - [ ] Add focused tests for `register-school`, forgot/reset-password flows, current-profile/session listing, tenant restrictions, and negative cases in user-role management
 
