@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { executeListQuery } from '../../../../common/query/list-query.util';
+import type { PaginationParams } from '../../../../common/pagination/pagination.util';
 import { PrismaService } from '../../../../common/prisma/prisma.service';
 import {
   USER_PERMISSIONS_SELECT,
@@ -35,6 +37,22 @@ export class UsersRepository {
 
   count(where: Prisma.UserWhereInput) {
     return this.prisma.user.count({ where });
+  }
+
+  findPage(
+    where: Prisma.UserWhereInput,
+    pagination: PaginationParams,
+    orderBy: Prisma.UserOrderByWithRelationInput,
+  ) {
+    return executeListQuery({
+      where,
+      pagination,
+      orderBy,
+      findMany: (criteria, skip, take, sort) =>
+        this.findMany(criteria, skip, take, sort),
+      count: (criteria) => this.count(criteria),
+      runInTransaction: (operations) => this.runInTransaction(operations),
+    });
   }
 
   findPublicById(id: string) {

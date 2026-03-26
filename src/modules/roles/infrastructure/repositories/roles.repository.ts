@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import type { PaginationParams } from '../../../../common/pagination/pagination.util';
+import { executeListQuery } from '../../../../common/query/list-query.util';
 import { PrismaService } from '../../../../common/prisma/prisma.service';
 import {
   PERMISSION_SELECT,
@@ -35,6 +37,22 @@ export class RolesRepository {
 
   countRoles(where: Prisma.RoleWhereInput) {
     return this.prisma.role.count({ where });
+  }
+
+  findRolesPage(
+    where: Prisma.RoleWhereInput,
+    pagination: PaginationParams,
+    orderBy: Prisma.RoleOrderByWithRelationInput,
+  ) {
+    return executeListQuery({
+      where,
+      pagination,
+      orderBy,
+      findMany: (criteria, skip, take, sort) =>
+        this.findRoles(criteria, skip, take, sort),
+      count: (criteria) => this.countRoles(criteria),
+      runInTransaction: (operations) => this.runInTransaction(operations),
+    });
   }
 
   findRoleById(id: string) {
@@ -90,6 +108,22 @@ export class RolesRepository {
 
   countPermissions(where: Prisma.PermissionWhereInput) {
     return this.prisma.permission.count({ where });
+  }
+
+  findPermissionsPage(
+    where: Prisma.PermissionWhereInput,
+    pagination: PaginationParams,
+    orderBy: Prisma.PermissionOrderByWithRelationInput,
+  ) {
+    return executeListQuery({
+      where,
+      pagination,
+      orderBy,
+      findMany: (criteria, skip, take, sort) =>
+        this.findPermissions(criteria, skip, take, sort),
+      count: (criteria) => this.countPermissions(criteria),
+      runInTransaction: (operations) => this.runInTransaction(operations),
+    });
   }
 
   findPermissionById(id: string) {
@@ -177,11 +211,7 @@ export class RolesRepository {
     });
   }
 
-  upsertUserRole(
-    userId: string,
-    roleId: string,
-    tx: Prisma.TransactionClient,
-  ) {
+  upsertUserRole(userId: string, roleId: string, tx: Prisma.TransactionClient) {
     return tx.userRole.upsert({
       where: {
         userId_roleId: {
@@ -197,11 +227,7 @@ export class RolesRepository {
     });
   }
 
-  deleteUserRole(
-    userId: string,
-    roleId: string,
-    tx: Prisma.TransactionClient,
-  ) {
+  deleteUserRole(userId: string, roleId: string, tx: Prisma.TransactionClient) {
     return tx.userRole.delete({
       where: {
         userId_roleId: {

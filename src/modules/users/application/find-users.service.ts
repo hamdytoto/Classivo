@@ -1,8 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import {
-  buildPaginatedResult,
-  resolvePaginationParams,
-} from '../../../common/pagination/pagination.util';
+import { Prisma } from '@prisma/client';
+import { resolveListQuery } from '../../../common/query/list-query.util';
 import type { AuthenticatedActor } from '../../../common/types/request-context.type';
 import { FindUsersQueryDto } from '../dto/find-users-query.dto';
 import { UsersAccessPolicy } from '../domain/policies/users-access.policy';
@@ -21,18 +19,12 @@ export class FindUsersService {
       query,
       actor,
     );
-    const pagination = resolvePaginationParams(query);
     const where = buildUserWhere(scopedQuery);
-    const sortBy = scopedQuery.sortBy ?? 'createdAt';
-    const sortOrder = scopedQuery.sortOrder ?? 'desc';
+    const { pagination, orderBy } = resolveListQuery<
+      NonNullable<FindUsersQueryDto['sortBy']>,
+      Prisma.UserOrderByWithRelationInput
+    >(scopedQuery, 'createdAt');
 
-    const [users, total] = await this.usersRepository.runInTransaction([
-      this.usersRepository.findMany(where, pagination.skip, pagination.limit, {
-        [sortBy]: sortOrder,
-      }),
-      this.usersRepository.count(where),
-    ]);
-
-    return buildPaginatedResult(users, pagination, total);
+    return this.usersRepository.findPage(where, pagination, orderBy);
   }
 }

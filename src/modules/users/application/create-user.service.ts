@@ -1,14 +1,11 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { rethrowPrismaError } from '../../../common/database/prisma-error.util';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { executePrismaOperation } from '../../../common/database/prisma-operation.util';
 import { hash } from '../../../common/security/hash.utils';
 import type { AuthenticatedActor } from '../../../common/types/request-context.type';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { UsersAccessPolicy } from '../domain/policies/users-access.policy';
 import { UsersRepository } from '../infrastructure/repositories/users.repository';
+import { createUserPrismaErrorHandlers } from './users-prisma-error.util';
 
 @Injectable()
 export class CreateUserService {
@@ -19,7 +16,10 @@ export class CreateUserService {
 
   async execute(dto: CreateUserDto, actor?: AuthenticatedActor) {
     this.usersAccessPolicy.ensureContactProvided(dto.email, dto.phone);
-    const schoolId = this.usersAccessPolicy.resolveSchoolId(actor, dto.schoolId);
+    const schoolId = this.usersAccessPolicy.resolveSchoolId(
+      actor,
+      dto.schoolId,
+    );
 
     if (schoolId) {
       const school = await this.usersRepository.findSchoolById(schoolId);
@@ -32,8 +32,8 @@ export class CreateUserService {
       }
     }
 
-    try {
-      return await this.usersRepository.create({
+    return executePrismaOperation(
+      this.usersRepository.create({
         schoolId,
         email: dto.email,
         phone: dto.phone,
@@ -41,26 +41,8 @@ export class CreateUserService {
         firstName: dto.firstName,
         lastName: dto.lastName,
         status: dto.status,
-      });
-    } catch (error) {
-      return rethrowPrismaError(error, {
-        onUnique: (target) => {
-          throw new ConflictException({
-            code: 'UNIQUE_CONSTRAINT_VIOLATION',
-            message: `Duplicate value for ${target}`,
-          });
-        },
-        onForeignKey: (fieldName) => {
-          if (fieldName.includes('schoolId')) {
-            throw new NotFoundException({
-              code: 'INVALID_SCHOOL_ID',
-              message: 'Invalid schoolId',
-            });
-          }
-
-          throw error;
-        },
-      });
-    }
+      }),
+      createUserPrismaErrorHandlers,
+    );
   }
 }

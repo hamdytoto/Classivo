@@ -1,8 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import {
-  buildPaginatedResult,
-  resolvePaginationParams,
-} from '../../../common/pagination/pagination.util';
+import { Prisma } from '@prisma/client';
+import { resolveListQuery } from '../../../common/query/list-query.util';
 import { FindRolesQueryDto } from '../dto/find-roles-query.dto';
 import { buildRoleWhere } from '../filters/role-list.filter';
 import { RolesRepository } from '../infrastructure/repositories/roles.repository';
@@ -12,18 +10,12 @@ export class FindRolesService {
   constructor(private readonly rolesRepository: RolesRepository) {}
 
   async execute(query: FindRolesQueryDto = {}) {
-    const pagination = resolvePaginationParams(query);
-    const sortBy = query.sortBy ?? 'createdAt';
-    const sortOrder = query.sortOrder ?? 'desc';
     const where = buildRoleWhere(query);
+    const { pagination, orderBy } = resolveListQuery<
+      NonNullable<FindRolesQueryDto['sortBy']>,
+      Prisma.RoleOrderByWithRelationInput
+    >(query, 'createdAt');
 
-    const [roles, total] = await this.rolesRepository.runInTransaction([
-      this.rolesRepository.findRoles(where, pagination.skip, pagination.limit, {
-        [sortBy]: sortOrder,
-      }),
-      this.rolesRepository.countRoles(where),
-    ]);
-
-    return buildPaginatedResult(roles, pagination, total);
+    return this.rolesRepository.findRolesPage(where, pagination, orderBy);
   }
 }

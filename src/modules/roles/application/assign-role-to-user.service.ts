@@ -1,15 +1,12 @@
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { AUDIT_ACTIONS } from '../../../common/audit/audit.constants';
 import { AuditLogService } from '../../../common/audit/audit-log.service';
-import { rethrowPrismaError } from '../../../common/database/prisma-error.util';
+import { executePrismaOperation } from '../../../common/database/prisma-operation.util';
 import { PrismaTransactionService } from '../../../common/prisma/prisma-transaction.service';
 import type { AuthenticatedActor } from '../../../common/types/request-context.type';
 import { RolesAccessPolicy } from '../domain/policies/roles-access.policy';
 import { RolesRepository } from '../infrastructure/repositories/roles.repository';
+import { roleAssignmentPrismaErrorHandlers } from './roles-prisma-error.util';
 
 @Injectable()
 export class AssignRoleToUserService {
@@ -48,8 +45,8 @@ export class AssignRoleToUserService {
 
     this.rolesAccessPolicy.assertActorCanAccessUserSchool(actor, user.schoolId);
 
-    try {
-      await this.prismaTransactionService.run(async (tx) => {
+    await executePrismaOperation(
+      this.prismaTransactionService.run(async (tx) => {
         await this.rolesRepository.upsertUserRole(userId, roleId, tx);
 
         await this.auditLogService.log(
@@ -70,23 +67,9 @@ export class AssignRoleToUserService {
           },
           tx,
         );
-      });
-    } catch (error) {
-      return rethrowPrismaError(error, {
-        onNotFound: () => {
-          throw new NotFoundException({
-            code: 'RELATION_NOT_FOUND',
-            message: 'Requested relation was not found',
-          });
-        },
-        onForeignKey: () => {
-          throw new BadRequestException({
-            code: 'FOREIGN_KEY_CONSTRAINT_VIOLATION',
-            message: 'Invalid related resource reference',
-          });
-        },
-      });
-    }
+      }),
+      roleAssignmentPrismaErrorHandlers,
+    );
 
     return {
       userId,

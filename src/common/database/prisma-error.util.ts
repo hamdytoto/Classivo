@@ -1,9 +1,9 @@
 import { Prisma } from '@prisma/client';
 
-type PrismaErrorHandlers = {
-  onUnique?: (target: string) => never;
-  onNotFound?: () => never;
-  onForeignKey?: (fieldName: string) => never;
+export type PrismaErrorHandlers = {
+  onUnique?: (target: string) => never | void;
+  onNotFound?: () => never | void;
+  onForeignKey?: (fieldName: string) => never | void;
 };
 
 export function rethrowPrismaError(
@@ -15,17 +15,29 @@ export function rethrowPrismaError(
       const target = Array.isArray(error.meta?.target)
         ? error.meta.target.join(', ')
         : 'unique field';
-      return handlers.onUnique(target);
+      const result = handlers.onUnique(target);
+
+      if (result !== undefined) {
+        return result;
+      }
     }
 
     if (error.code === 'P2025' && handlers.onNotFound) {
-      return handlers.onNotFound();
+      const result = handlers.onNotFound();
+
+      if (result !== undefined) {
+        return result;
+      }
     }
 
     if (error.code === 'P2003' && handlers.onForeignKey) {
       const fieldName =
         typeof error.meta?.field_name === 'string' ? error.meta.field_name : '';
-      return handlers.onForeignKey(fieldName);
+      const result = handlers.onForeignKey(fieldName);
+
+      if (result !== undefined) {
+        return result;
+      }
     }
   }
 
