@@ -77,7 +77,7 @@ Sprint 1 should remain an identity-and-access sprint. Do not pull academic domai
 - [x] Replace the loose authenticated actor shape with a stronger shared contract so controllers do not need to resolve `id | userId | sub` manually
 - [x] Align `users` and `roles` module structure with the `auth` module architecture, or remove placeholder folders and keep the simpler structure intentionally
 - [x] Extract shared read/query concerns from `UsersService` and `RolesService` into reusable query/repository helpers to reduce duplicated pagination, sorting, and Prisma error handling
-- [ ] Expand audit coverage for sensitive mutations including role/permission create-update flows, school bootstrap, and password reset completion
+- [x] Expand audit coverage for sensitive mutations including role/permission create-update flows, school bootstrap, and password reset completion -> see `src/common/audit/*`, `src/modules/roles/*`, and `src/modules/auth/*`
 - [ ] Move password-reset email delivery to the queue layer with retry-safe behavior instead of sending it inline from the request flow
 - [ ] Relax login password validation so login checks credentials without enforcing the current strong-password policy on existing accounts
 - [ ] Reduce unnecessary module coupling such as `UsersModule -> AuthModule` where global guards and shared contracts would be enough

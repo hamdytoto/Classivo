@@ -13,8 +13,9 @@ import {
 export class RolesRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  createRole(data: Prisma.RoleCreateInput) {
-    return this.prisma.role.create({
+  createRole(data: Prisma.RoleCreateInput, tx?: Prisma.TransactionClient) {
+    const client = tx ?? this.prisma;
+    return client.role.create({
       data,
       select: ROLE_SELECT,
     });
@@ -76,16 +77,25 @@ export class RolesRepository {
     });
   }
 
-  updateRole(id: string, data: Prisma.RoleUpdateInput) {
-    return this.prisma.role.update({
+  updateRole(
+    id: string,
+    data: Prisma.RoleUpdateInput,
+    tx?: Prisma.TransactionClient,
+  ) {
+    const client = tx ?? this.prisma;
+    return client.role.update({
       where: { id },
       data,
       select: ROLE_SELECT,
     });
   }
 
-  createPermission(data: Prisma.PermissionCreateInput) {
-    return this.prisma.permission.create({
+  createPermission(
+    data: Prisma.PermissionCreateInput,
+    tx?: Prisma.TransactionClient,
+  ) {
+    const client = tx ?? this.prisma;
+    return client.permission.create({
       data,
       select: PERMISSION_SELECT,
     });
@@ -140,8 +150,13 @@ export class RolesRepository {
     });
   }
 
-  updatePermission(id: string, data: Prisma.PermissionUpdateInput) {
-    return this.prisma.permission.update({
+  updatePermission(
+    id: string,
+    data: Prisma.PermissionUpdateInput,
+    tx?: Prisma.TransactionClient,
+  ) {
+    const client = tx ?? this.prisma;
+    return client.permission.update({
       where: { id },
       data,
       select: PERMISSION_SELECT,

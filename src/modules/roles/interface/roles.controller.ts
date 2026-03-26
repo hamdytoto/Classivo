@@ -45,8 +45,8 @@ export class RolesController {
   @Post()
   @ApiOperation({ summary: 'Create role' })
   @ApiValidationFailureResponse('/api/v1/roles')
-  createRole(@Body() dto: CreateRoleDto) {
-    return this.rolesService.createRole(dto);
+  createRole(@Body() dto: CreateRoleDto, @CurrentUserId() actorId: string) {
+    return this.rolesService.createRole(dto, actorId);
   }
 
   @Get()
@@ -58,8 +58,11 @@ export class RolesController {
   @Post('permissions')
   @ApiOperation({ summary: 'Create permission' })
   @ApiValidationFailureResponse('/api/v1/roles/permissions')
-  createPermission(@Body() dto: CreatePermissionDto) {
-    return this.rolesService.createPermission(dto);
+  createPermission(
+    @Body() dto: CreatePermissionDto,
+    @CurrentUserId() actorId: string,
+  ) {
+    return this.rolesService.createPermission(dto, actorId);
   }
 
   @Get('permissions')
@@ -83,8 +86,9 @@ export class RolesController {
   updatePermission(
     @Param() params: UuidParamDto,
     @Body() dto: UpdatePermissionDto,
+    @CurrentUserId() actorId: string,
   ) {
-    return this.rolesService.updatePermission(params.id, dto);
+    return this.rolesService.updatePermission(params.id, dto, actorId);
   }
 
   @Get(':id/users')
@@ -111,8 +115,12 @@ export class RolesController {
   @ApiOperation({ summary: 'Update role by id' })
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiValidationFailureResponse('/api/v1/roles/{id}')
-  updateRole(@Param() params: UuidParamDto, @Body() dto: UpdateRoleDto) {
-    return this.rolesService.updateRole(params.id, dto);
+  updateRole(
+    @Param() params: UuidParamDto,
+    @Body() dto: UpdateRoleDto,
+    @CurrentUserId() actorId: string,
+  ) {
+    return this.rolesService.updateRole(params.id, dto, actorId);
   }
 
   @Post(':roleId/permissions/:permissionId')

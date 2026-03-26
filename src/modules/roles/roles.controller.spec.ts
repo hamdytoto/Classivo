@@ -123,6 +123,66 @@ describe('RolesController', () => {
     });
   });
 
+  it('should pass the authenticated actor when creating a role', async () => {
+    (rolesServiceMock.createRole as jest.Mock).mockResolvedValueOnce({
+      id: 'role-1',
+      code: 'SCHOOL_ADMIN',
+      name: 'School Admin',
+    });
+
+    const result = await controller.createRole(
+      {
+        code: 'SCHOOL_ADMIN',
+        name: 'School Admin',
+      } as never,
+      'actor-1',
+    );
+
+    expect(rolesServiceMock.createRole).toHaveBeenCalledWith(
+      {
+        code: 'SCHOOL_ADMIN',
+        name: 'School Admin',
+      },
+      'actor-1',
+    );
+    expect(result).toEqual({
+      id: 'role-1',
+      code: 'SCHOOL_ADMIN',
+      name: 'School Admin',
+    });
+  });
+
+  it('should pass the authenticated actor when updating a permission', async () => {
+    (rolesServiceMock.updatePermission as jest.Mock).mockResolvedValueOnce({
+      id: 'permission-1',
+      code: 'users.manage',
+      name: 'Manage users',
+    });
+
+    const result = await controller.updatePermission(
+      {
+        id: 'permission-1',
+      } as never,
+      {
+        name: 'Manage users',
+      } as never,
+      'actor-1',
+    );
+
+    expect(rolesServiceMock.updatePermission).toHaveBeenCalledWith(
+      'permission-1',
+      {
+        name: 'Manage users',
+      },
+      'actor-1',
+    );
+    expect(result).toEqual({
+      id: 'permission-1',
+      code: 'users.manage',
+      name: 'Manage users',
+    });
+  });
+
   it('should pass the authenticated actor when assigning a role to a user', async () => {
     (rolesServiceMock.assignRoleToUser as jest.Mock).mockResolvedValueOnce({
       userId: 'user-1',

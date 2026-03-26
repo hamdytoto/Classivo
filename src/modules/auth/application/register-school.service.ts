@@ -1,6 +1,8 @@
 import { randomUUID } from 'crypto';
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { UserStatus } from '@prisma/client';
+import { AUDIT_ACTIONS } from '../../../common/audit/audit.constants';
+import { AuditLogService } from '../../../common/audit/audit-log.service';
 import { PrismaTransactionService } from '../../../common/prisma/prisma-transaction.service';
 import { handlePrismaError } from '../../../common/prisma/prisma-error.handler';
 import { AUTH_ERROR_CODES } from '../domain/auth-errors';
@@ -27,9 +29,14 @@ export class RegisterSchoolService {
     private readonly authTokenService: AuthTokenService,
     private readonly passwordHasherService: PasswordHasherService,
     private readonly tokenHasherService: TokenHasherService,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
-  async execute(dto: RegisterSchoolDto, sessionContext?: SessionContext) {
+  async execute(
+    dto: RegisterSchoolDto,
+    sessionContext?: SessionContext,
+    actorId?: string,
+  ) {
     const schoolCode = this.authIdentityPolicy.normalizeSchoolCode(
       dto.schoolCode,
     );
@@ -94,6 +101,29 @@ export class RegisterSchoolService {
             expiresAt: this.authTokenService.buildExpiryDate(
               authTokens.refreshExpiresIn,
             ),
+          },
+          tx,
+        );
+
+        await this.auditLogService.log(
+          {
+            action: AUDIT_ACTIONS.schoolRegistered,
+            resource: 'school',
+            resourceId: school.id,
+            actorId,
+            schoolId: school.id,
+            ipAddress: sessionContext?.ipAddress ?? null,
+            metadata: {
+              schoolId: school.id,
+              schoolCode: school.code,
+              schoolName: school.name,
+              ownerUserId: user.id,
+              ownerEmail: user.email,
+              assignedRoleId: schoolAdminRole.id,
+              assignedRoleCode: schoolAdminRole.code,
+              sessionId,
+              userAgent: sessionContext?.userAgent ?? null,
+            },
           },
           tx,
         );

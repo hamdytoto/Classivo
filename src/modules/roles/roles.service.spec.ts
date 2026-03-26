@@ -111,8 +111,13 @@ describe('RolesService', () => {
   });
 
   it('should pass through conflict exception for duplicate role code', async () => {
-    (prismaMock.role.create as jest.Mock).mockRejectedValueOnce(
-      new ConflictException(),
+    const tx = {
+      role: {
+        create: jest.fn().mockRejectedValue(new ConflictException()),
+      },
+    };
+    (prismaMock.$transaction as jest.Mock).mockImplementationOnce((callback) =>
+      callback(tx),
     );
 
     await expect(
@@ -121,6 +126,55 @@ describe('RolesService', () => {
         name: 'School Admin',
       }),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('should audit role creation', async () => {
+    const tx = {
+      role: {
+        create: jest.fn().mockResolvedValue({
+          id: 'role-1',
+          code: 'SCHOOL_ADMIN',
+          name: 'School Admin',
+          createdAt: new Date('2026-03-13T00:00:00.000Z'),
+          updatedAt: new Date('2026-03-13T00:00:00.000Z'),
+          permissions: [],
+        }),
+      },
+    };
+    (prismaMock.$transaction as jest.Mock).mockImplementationOnce((callback) =>
+      callback(tx),
+    );
+    (auditLogServiceMock.log as jest.Mock).mockResolvedValueOnce(undefined);
+
+    await expect(
+      service.createRole(
+        {
+          code: 'SCHOOL_ADMIN',
+          name: 'School Admin',
+        },
+        'actor-1',
+      ),
+    ).resolves.toEqual({
+      id: 'role-1',
+      code: 'SCHOOL_ADMIN',
+      name: 'School Admin',
+      createdAt: new Date('2026-03-13T00:00:00.000Z'),
+      updatedAt: new Date('2026-03-13T00:00:00.000Z'),
+      permissions: [],
+    });
+
+    expect(auditLogServiceMock.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: AUDIT_ACTIONS.roleCreated,
+        resource: 'role',
+        resourceId: 'role-1',
+        actorId: 'actor-1',
+        metadata: expect.objectContaining({
+          roleCode: 'SCHOOL_ADMIN',
+        }),
+      }),
+      tx,
+    );
   });
 
   it('should return users assigned to an existing role', async () => {
@@ -315,6 +369,163 @@ describe('RolesService', () => {
           },
         },
       }),
+    );
+  });
+
+  it('should audit role updates', async () => {
+    const tx = {
+      role: {
+        update: jest.fn().mockResolvedValue({
+          id: 'role-1',
+          code: 'SCHOOL_ADMIN',
+          name: 'Updated School Admin',
+          createdAt: new Date('2026-03-13T00:00:00.000Z'),
+          updatedAt: new Date('2026-03-14T00:00:00.000Z'),
+          permissions: [],
+        }),
+      },
+    };
+    (prismaMock.role.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: 'role-1',
+      code: 'SCHOOL_ADMIN',
+      name: 'School Admin',
+    });
+    (prismaMock.$transaction as jest.Mock).mockImplementationOnce((callback) =>
+      callback(tx),
+    );
+    (auditLogServiceMock.log as jest.Mock).mockResolvedValueOnce(undefined);
+
+    await expect(
+      service.updateRole(
+        'role-1',
+        {
+          name: 'Updated School Admin',
+        },
+        'actor-1',
+      ),
+    ).resolves.toEqual({
+      id: 'role-1',
+      code: 'SCHOOL_ADMIN',
+      name: 'Updated School Admin',
+      createdAt: new Date('2026-03-13T00:00:00.000Z'),
+      updatedAt: new Date('2026-03-14T00:00:00.000Z'),
+      permissions: [],
+    });
+
+    expect(auditLogServiceMock.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: AUDIT_ACTIONS.roleUpdated,
+        resource: 'role',
+        resourceId: 'role-1',
+        actorId: 'actor-1',
+        metadata: expect.objectContaining({
+          previousName: 'School Admin',
+          nextName: 'Updated School Admin',
+          changedFields: ['name'],
+        }),
+      }),
+      tx,
+    );
+  });
+
+  it('should audit permission creation', async () => {
+    const tx = {
+      permission: {
+        create: jest.fn().mockResolvedValue({
+          id: 'permission-1',
+          code: 'users.manage',
+          name: 'Manage users',
+          createdAt: new Date('2026-03-13T00:00:00.000Z'),
+          updatedAt: new Date('2026-03-13T00:00:00.000Z'),
+        }),
+      },
+    };
+    (prismaMock.$transaction as jest.Mock).mockImplementationOnce((callback) =>
+      callback(tx),
+    );
+    (auditLogServiceMock.log as jest.Mock).mockResolvedValueOnce(undefined);
+
+    await expect(
+      service.createPermission(
+        {
+          code: 'users.manage',
+          name: 'Manage users',
+        },
+        'actor-1',
+      ),
+    ).resolves.toEqual({
+      id: 'permission-1',
+      code: 'users.manage',
+      name: 'Manage users',
+      createdAt: new Date('2026-03-13T00:00:00.000Z'),
+      updatedAt: new Date('2026-03-13T00:00:00.000Z'),
+    });
+
+    expect(auditLogServiceMock.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: AUDIT_ACTIONS.permissionCreated,
+        resource: 'permission',
+        resourceId: 'permission-1',
+        actorId: 'actor-1',
+        metadata: expect.objectContaining({
+          permissionCode: 'users.manage',
+        }),
+      }),
+      tx,
+    );
+  });
+
+  it('should audit permission updates', async () => {
+    const tx = {
+      permission: {
+        update: jest.fn().mockResolvedValue({
+          id: 'permission-1',
+          code: 'users.manage',
+          name: 'Manage users and roles',
+          createdAt: new Date('2026-03-13T00:00:00.000Z'),
+          updatedAt: new Date('2026-03-14T00:00:00.000Z'),
+        }),
+      },
+    };
+    (prismaMock.permission.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: 'permission-1',
+      code: 'users.manage',
+      name: 'Manage users',
+    });
+    (prismaMock.$transaction as jest.Mock).mockImplementationOnce((callback) =>
+      callback(tx),
+    );
+    (auditLogServiceMock.log as jest.Mock).mockResolvedValueOnce(undefined);
+
+    await expect(
+      service.updatePermission(
+        'permission-1',
+        {
+          name: 'Manage users and roles',
+        },
+        'actor-1',
+      ),
+    ).resolves.toEqual({
+      id: 'permission-1',
+      code: 'users.manage',
+      name: 'Manage users and roles',
+      createdAt: new Date('2026-03-13T00:00:00.000Z'),
+      updatedAt: new Date('2026-03-14T00:00:00.000Z'),
+    });
+
+    expect(auditLogServiceMock.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: AUDIT_ACTIONS.permissionUpdated,
+        resource: 'permission',
+        resourceId: 'permission-1',
+        actorId: 'actor-1',
+        metadata: expect.objectContaining({
+          previousName: 'Manage users',
+          nextName: 'Manage users and roles',
+          changedFields: ['name'],
+        }),
+      }),
+      tx,
     );
   });
 

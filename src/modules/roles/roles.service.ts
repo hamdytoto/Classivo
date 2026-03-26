@@ -39,8 +39,8 @@ export class RolesService {
     private readonly removeRoleFromUserService: RemoveRoleFromUserService,
   ) {}
 
-  createRole(dto: CreateRoleDto) {
-    return this.createRoleService.execute(dto);
+  createRole(dto: CreateRoleDto, actorId?: string) {
+    return this.createRoleService.execute(dto, actorId);
   }
 
   findAllRoles(query: FindRolesQueryDto = {}) {
@@ -51,12 +51,12 @@ export class RolesService {
     return this.findRoleService.execute(id);
   }
 
-  updateRole(id: string, dto: UpdateRoleDto) {
-    return this.updateRoleService.execute(id, dto);
+  updateRole(id: string, dto: UpdateRoleDto, actorId?: string) {
+    return this.updateRoleService.execute(id, dto, actorId);
   }
 
-  createPermission(dto: CreatePermissionDto) {
-    return this.createPermissionService.execute(dto);
+  createPermission(dto: CreatePermissionDto, actorId?: string) {
+    return this.createPermissionService.execute(dto, actorId);
   }
 
   findAllPermissions(query: FindPermissionsQueryDto = {}) {
@@ -67,8 +67,8 @@ export class RolesService {
     return this.findPermissionService.execute(id);
   }
 
-  updatePermission(id: string, dto: UpdatePermissionDto) {
-    return this.updatePermissionService.execute(id, dto);
+  updatePermission(id: string, dto: UpdatePermissionDto, actorId?: string) {
+    return this.updatePermissionService.execute(id, dto, actorId);
   }
 
   findUsersForRole(
@@ -79,7 +79,11 @@ export class RolesService {
     return this.findRoleUsersService.execute(roleId, query, actor);
   }
 
-  assignPermissionToRole(roleId: string, permissionId: string, actorId?: string) {
+  assignPermissionToRole(
+    roleId: string,
+    permissionId: string,
+    actorId?: string,
+  ) {
     return this.assignPermissionToRoleService.execute(
       roleId,
       permissionId,
@@ -114,6 +118,11 @@ export class RolesService {
     actorId?: string,
     actor?: AuthenticatedActor,
   ) {
-    return this.removeRoleFromUserService.execute(userId, roleId, actorId, actor);
+    return this.removeRoleFromUserService.execute(
+      userId,
+      roleId,
+      actorId,
+      actor,
+    );
   }
 }

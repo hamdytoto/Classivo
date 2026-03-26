@@ -65,8 +65,12 @@ export class AuthService {
     return this.revokeSessionService.execute(sessionId, actorId);
   }
 
-  registerSchool(dto: RegisterSchoolDto, sessionContext?: SessionContext) {
-    return this.registerSchoolService.execute(dto, sessionContext);
+  registerSchool(
+    dto: RegisterSchoolDto,
+    sessionContext?: SessionContext,
+    actorId?: string,
+  ) {
+    return this.registerSchoolService.execute(dto, sessionContext, actorId);
   }
 
   changePassword(
@@ -87,8 +91,18 @@ export class AuthService {
     return this.requestPasswordResetService.execute(email, sessionContext);
   }
 
-  resetPassword(email: string, otp: string, newPassword: string) {
-    return this.confirmPasswordResetService.execute(email, otp, newPassword);
+  resetPassword(
+    email: string,
+    otp: string,
+    newPassword: string,
+    sessionContext?: SessionContext,
+  ) {
+    return this.confirmPasswordResetService.execute(
+      email,
+      otp,
+      newPassword,
+      sessionContext,
+    );
   }
 
   me(actorId: string) {

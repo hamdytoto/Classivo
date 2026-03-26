@@ -142,6 +142,7 @@ describe('AuthController', () => {
         firstName: 'John',
         lastName: 'Doe',
       } as never,
+      'actor-1',
       {
         ip: '127.0.0.1',
         get: jest.fn().mockReturnValue('jest'),
@@ -161,6 +162,7 @@ describe('AuthController', () => {
         ipAddress: '127.0.0.1',
         userAgent: 'jest',
       },
+      'actor-1',
     );
     expect(result).toEqual({
       school: { id: 'school-123' },
@@ -364,12 +366,20 @@ describe('AuthController', () => {
       email: 'john@classivo.dev',
       otp: '123456',
       newPassword: 'NewPassword456!',
+    } as never,
+    {
+      ip: '127.0.0.1',
+      get: jest.fn().mockReturnValue('jest'),
     } as never);
 
     expect(resetPasswordMock).toHaveBeenCalledWith(
       'john@classivo.dev',
       '123456',
       'NewPassword456!',
+      {
+        ipAddress: '127.0.0.1',
+        userAgent: 'jest',
+      },
     );
     expect(result).toBeUndefined();
   });

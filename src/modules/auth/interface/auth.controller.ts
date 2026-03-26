@@ -73,11 +73,13 @@ export class AuthController {
   @ApiValidationFailureResponse(AUTH_PATHS.registerSchool)
   registerSchool(
     @Body() dto: RegisterSchoolDto,
+    @CurrentUserId() actorId: string,
     @Req() request: SessionRequest,
   ) {
     return this.authService.registerSchool(
       dto,
       this.extractSessionContext(request),
+      actorId,
     );
   }
   @Get('me')
@@ -162,8 +164,16 @@ export class AuthController {
   })
   @ApiValidationFailureResponse('/api/v1/auth/reset-password')
   @ApiResetPasswordUnauthorized('/api/v1/auth/reset-password')
-  async resetPassword(@Body() dto: ResetPasswordDto) {
-    await this.authService.resetPassword(dto.email, dto.otp, dto.newPassword);
+  async resetPassword(
+    @Body() dto: ResetPasswordDto,
+    @Req() request: SessionRequest,
+  ) {
+    await this.authService.resetPassword(
+      dto.email,
+      dto.otp,
+      dto.newPassword,
+      this.extractSessionContext(request),
+    );
   }
 
   @Post('logout')

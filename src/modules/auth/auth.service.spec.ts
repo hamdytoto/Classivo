@@ -181,6 +181,7 @@ describe('AuthService', () => {
           lastName: 'User',
         },
         { ipAddress: '127.0.0.1' },
+        'actor-1',
       ),
     ).resolves.toEqual({ school: { id: 'school-1' } });
     await expect(
@@ -192,10 +193,26 @@ describe('AuthService', () => {
       service.forgotPassword('user@classivo.dev', { ipAddress: '127.0.0.1' }),
     ).resolves.toEqual({ message: 'queued' });
     await expect(
-      service.resetPassword('user@classivo.dev', '123456', 'Password123!'),
+      service.resetPassword(
+        'user@classivo.dev',
+        '123456',
+        'Password123!',
+        { ipAddress: '127.0.0.1' },
+      ),
     ).resolves.toBeUndefined();
 
-    expect(registerSchoolExecute).toHaveBeenCalled();
+    expect(registerSchoolExecute).toHaveBeenCalledWith(
+      {
+        schoolName: 'Classivo',
+        schoolCode: 'CLASSIVO',
+        email: 'owner@classivo.dev',
+        password: 'Password123!',
+        firstName: 'Owner',
+        lastName: 'User',
+      },
+      { ipAddress: '127.0.0.1' },
+      'actor-1',
+    );
     expect(changePasswordExecute).toHaveBeenCalledWith('user-1', 'old', 'new', {
       ipAddress: '127.0.0.1',
     });
@@ -207,6 +224,7 @@ describe('AuthService', () => {
       'user@classivo.dev',
       '123456',
       'Password123!',
+      { ipAddress: '127.0.0.1' },
     );
   });
 });
