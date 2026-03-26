@@ -238,6 +238,26 @@ describe('UsersService', () => {
     );
   });
 
+  it('should hide user-role inspection for other schools from scoped actors', async () => {
+    (prismaMock.user.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: 'user-123',
+      schoolId: 'school-other',
+      roles: [],
+    });
+
+    await expect(
+      service.findRoles(
+        'user-123',
+        {},
+        {
+          id: 'actor-1',
+          schoolId: 'school-1',
+          roles: ['SCHOOL_ADMIN'],
+        },
+      ),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
   it('should return effective permissions grouped by granting roles', async () => {
     (prismaMock.user.findUnique as jest.Mock).mockResolvedValueOnce({
       id: 'user-123',
@@ -425,6 +445,26 @@ describe('UsersService', () => {
 
     await expect(
       service.findPermissions('missing-user'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('should hide user-permission inspection for other schools from scoped actors', async () => {
+    (prismaMock.user.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: 'user-123',
+      schoolId: 'school-other',
+      roles: [],
+    });
+
+    await expect(
+      service.findPermissions(
+        'user-123',
+        {},
+        {
+          id: 'actor-1',
+          schoolId: 'school-1',
+          roles: ['SCHOOL_ADMIN'],
+        },
+      ),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 

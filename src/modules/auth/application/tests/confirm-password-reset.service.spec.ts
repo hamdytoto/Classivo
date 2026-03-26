@@ -1,3 +1,4 @@
+import { UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { AUDIT_ACTIONS } from '../../../../common/audit/audit.constants';
 import { AuditLogService } from '../../../../common/audit/audit-log.service';
@@ -154,5 +155,39 @@ describe('ConfirmPasswordResetService', () => {
       }),
       tx,
     );
+  });
+
+  it('should reject an invalid otp without mutating user or session state', async () => {
+    authIdentityPolicyMock.normalizeEmail.mockReturnValueOnce(
+      'user@classivo.dev',
+    );
+    authPasswordResetOtpRepositoryMock.findLatestActiveByEmail.mockResolvedValueOnce(
+      {
+        id: 'reset-1',
+        userId: 'user-1',
+        codeHash: 'stored-otp-hash',
+        expiresAt: new Date('2026-03-28T00:00:00.000Z'),
+        user: {
+          id: 'user-1',
+          status: 'ACTIVE',
+        },
+      },
+    );
+    passwordHasherServiceMock.compare.mockResolvedValueOnce(false);
+    passwordResetPolicyMock.throwInvalidOtp.mockImplementationOnce(() => {
+      throw new UnauthorizedException({
+        code: 'INVALID_PASSWORD_RESET_OTP',
+        message: 'Invalid password reset OTP',
+      });
+    });
+
+    await expect(
+      service.execute('user@classivo.dev', '000000', 'NewPassword123!'),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+
+    expect(prismaTransactionServiceMock.run).not.toHaveBeenCalled();
+    expect(authUserRepositoryMock.updatePassword).not.toHaveBeenCalled();
+    expect(authSessionRepositoryMock.revokeManyByUserId).not.toHaveBeenCalled();
+    expect(auditLogServiceMock.log).not.toHaveBeenCalled();
   });
 });

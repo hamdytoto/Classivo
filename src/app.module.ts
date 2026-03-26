@@ -1,4 +1,5 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HealthController } from './health/health.controller';
@@ -25,17 +26,20 @@ import { AuthorizationReadRepository } from './common/repositories/authorization
   providers: [
     AppService,
     AuthorizationReadRepository,
+    JwtAuthGuard,
+    RolesGuard,
+    PermissionsGuard,
     {
-      provide: 'APP_GUARD',
-      useClass: JwtAuthGuard,
+      provide: APP_GUARD,
+      useExisting: JwtAuthGuard,
     },
     {
-      provide: 'APP_GUARD',
-      useClass: RolesGuard,
+      provide: APP_GUARD,
+      useExisting: RolesGuard,
     },
     {
-      provide: 'APP_GUARD',
-      useClass: PermissionsGuard,
+      provide: APP_GUARD,
+      useExisting: PermissionsGuard,
     },
   ],
 })

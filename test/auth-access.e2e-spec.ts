@@ -28,9 +28,17 @@ import { AuthTokenService } from '../src/modules/auth/infrastructure/security/au
 import { PasswordHasherService } from '../src/modules/auth/infrastructure/security/password-hasher.service';
 import { TokenHasherService } from '../src/modules/auth/infrastructure/security/token-hasher.service';
 import { AuthController } from '../src/modules/auth/interface/auth.controller';
-import { RolesController } from '../src/modules/roles/roles.controller';
+import {
+  rolesApplicationProviders,
+  rolesDomainProviders,
+  rolesInfrastructureProviders,
+} from '../src/modules/roles/roles.providers';
+import { RolesController } from '../src/modules/roles/interface/roles.controller';
 import { RolesService } from '../src/modules/roles/roles.service';
-import { UsersController } from '../src/modules/users/users.controller';
+import { UsersController } from '../src/modules/users/interface/users.controller';
+import { usersApplicationProviders } from '../src/modules/users/users.providers';
+import { usersDomainProviders } from '../src/modules/users/users.providers';
+import { usersInfrastructureProviders } from '../src/modules/users/users.providers';
 import { UsersService } from '../src/modules/users/users.service';
 import { InMemoryPrismaService } from './support/in-memory-prisma.service';
 
@@ -194,7 +202,13 @@ describe('Auth + Access flows (e2e)', () => {
         PasswordHasherService,
         TokenHasherService,
         RolesService,
+        ...rolesApplicationProviders,
+        ...rolesDomainProviders,
+        ...rolesInfrastructureProviders,
         UsersService,
+        ...usersApplicationProviders,
+        ...usersDomainProviders,
+        ...usersInfrastructureProviders,
         AuthorizationReadRepository,
         AuthRateLimitGuard,
         JwtAuthGuard,
@@ -227,7 +241,7 @@ describe('Auth + Access flows (e2e)', () => {
   });
 
   afterEach(async () => {
-    await app.close();
+    await app?.close();
   });
 
   it('should complete login -> refresh -> logout and block refresh after logout', async () => {

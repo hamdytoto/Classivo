@@ -28,7 +28,7 @@ export class LoginDto {
   phone?: string;
 
   @ApiProperty({
-    example: 'legacy-password',
+    example: 'ChangeMe123!',
     description:
       'The account password. Login accepts existing passwords without enforcing the current strong-password creation policy.',
   })

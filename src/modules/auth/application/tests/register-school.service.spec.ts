@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { InternalServerErrorException } from '@nestjs/common';
 import { AUDIT_ACTIONS } from '../../../../common/audit/audit.constants';
 import { AuditLogService } from '../../../../common/audit/audit-log.service';
 import { PrismaTransactionService } from '../../../../common/prisma/prisma-transaction.service';
@@ -197,5 +198,24 @@ describe('RegisterSchoolService', () => {
       }),
       tx,
     );
+  });
+
+  it('should reject registration when the baseline school-admin role is missing', async () => {
+    authIdentityPolicyMock.normalizeSchoolCode.mockReturnValueOnce('CLASSIVO');
+    authRoleRepositoryMock.findByCode.mockResolvedValueOnce(null);
+
+    await expect(
+      service.execute({
+        schoolName: 'Classivo Academy',
+        schoolCode: 'classivo',
+        email: 'owner@classivo.dev',
+        password: 'Password123!',
+        firstName: 'Owner',
+        lastName: 'User',
+      }),
+    ).rejects.toBeInstanceOf(InternalServerErrorException);
+
+    expect(passwordHasherServiceMock.hash).not.toHaveBeenCalled();
+    expect(prismaTransactionServiceMock.run).not.toHaveBeenCalled();
   });
 });

@@ -198,4 +198,31 @@ describe('RequestPasswordResetService', () => {
       authPasswordResetOtpRepositoryMock.deleteActiveByUserIdAndCodeHash,
     ).toHaveBeenCalledWith('user-1', 'hashed-otp');
   });
+
+  it('should return the generic response without creating an otp for inactive accounts', async () => {
+    const response = {
+      message:
+        'If an active account exists for that email, a password reset OTP has been sent.',
+    };
+
+    authIdentityPolicyMock.normalizeEmail.mockReturnValueOnce(
+      'disabled@classivo.dev',
+    );
+    authUserRepositoryMock.findForForgotPassword.mockResolvedValueOnce({
+      id: 'user-1',
+      email: 'disabled@classivo.dev',
+      firstName: 'Disabled',
+      status: UserStatus.DISABLED,
+    });
+    passwordResetPolicyMock.buildForgotPasswordResponse.mockReturnValueOnce(
+      response,
+    );
+
+    await expect(
+      service.execute('disabled@classivo.dev'),
+    ).resolves.toEqual(response);
+
+    expect(authPasswordResetOtpRepositoryMock.create).not.toHaveBeenCalled();
+    expect(passwordResetMailQueueMock.enqueue).not.toHaveBeenCalled();
+  });
 });

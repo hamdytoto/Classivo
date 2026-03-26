@@ -661,6 +661,44 @@ describe('RolesService', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
+  it('should reject cross-school role removal for scoped actors', async () => {
+    (prismaMock.role.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: 'role-1',
+      code: 'SCHOOL_ADMIN',
+      name: 'School Admin',
+    });
+    (prismaMock.user.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: 'user-1',
+      schoolId: 'school-2',
+    });
+
+    await expect(
+      service.removeRoleFromUser(
+        'user-1',
+        'role-1',
+        'actor-1',
+        {
+          id: 'actor-1',
+          schoolId: 'school-1',
+          roles: ['SCHOOL_ADMIN'],
+        },
+      ),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('should reject role removal when the target user does not exist', async () => {
+    (prismaMock.role.findUnique as jest.Mock).mockResolvedValueOnce({
+      id: 'role-1',
+      code: 'SCHOOL_ADMIN',
+      name: 'School Admin',
+    });
+    (prismaMock.user.findUnique as jest.Mock).mockResolvedValueOnce(null);
+
+    await expect(
+      service.removeRoleFromUser('missing-user', 'role-1', 'actor-1'),
+    ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
   it('should reject role-user queries with a foreign school filter for scoped actors', async () => {
     (prismaMock.role.findUnique as jest.Mock).mockResolvedValueOnce({
       id: 'role-1',
