@@ -61,6 +61,28 @@ export class AuthPasswordResetOtpRepository {
     });
   }
 
+  async findActiveDeliveryTargetById(id: string) {
+    return this.prisma.passwordResetOtp.findFirst({
+      where: {
+        id,
+        consumedAt: null,
+        expiresAt: {
+          gt: new Date(),
+        },
+      },
+      select: {
+        id: true,
+        userId: true,
+        email: true,
+        user: {
+          select: {
+            status: true,
+          },
+        },
+      },
+    });
+  }
+
   async deleteActiveByUserIdAndCodeHash(userId: string, codeHash: string) {
     return this.prisma.passwordResetOtp.deleteMany({
       where: {

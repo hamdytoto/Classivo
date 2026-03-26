@@ -4,8 +4,8 @@ import { PrismaTransactionService } from '../../../common/prisma/prisma-transact
 import { SessionContext } from '../domain/auth.types';
 import { AuthIdentityPolicy } from '../domain/policies/auth-identity.policy';
 import { PasswordResetPolicy } from '../domain/policies/password-reset.policy';
-import { AuthMailerService } from '../infrastructure/notifications/auth-mailer.service';
 import { PasswordResetMailFactory } from '../infrastructure/notifications/password-reset-mail.factory';
+import { PasswordResetMailQueue } from '../infrastructure/queue/password-reset-mail.queue';
 import { AuthPasswordResetOtpRepository } from '../infrastructure/repositories/auth-password-reset-otp.repository';
 import { AuthUserRepository } from '../infrastructure/repositories/auth-user.repository';
 import { PasswordHasherService } from '../infrastructure/security/password-hasher.service';
@@ -16,8 +16,8 @@ export class RequestPasswordResetService {
     private readonly prismaTransactionService: PrismaTransactionService,
     private readonly authIdentityPolicy: AuthIdentityPolicy,
     private readonly passwordResetPolicy: PasswordResetPolicy,
-    private readonly authMailerService: AuthMailerService,
     private readonly passwordResetMailFactory: PasswordResetMailFactory,
+    private readonly passwordResetMailQueue: PasswordResetMailQueue,
     private readonly authPasswordResetOtpRepository: AuthPasswordResetOtpRepository,
     private readonly authUserRepository: AuthUserRepository,
     private readonly passwordHasherService: PasswordHasherService,
@@ -47,13 +47,13 @@ export class RequestPasswordResetService {
       firstName: user.firstName,
     });
 
-    await this.prismaTransactionService.run(async (tx) => {
+    const resetRequest = await this.prismaTransactionService.run(async (tx) => {
       await this.authPasswordResetOtpRepository.invalidateActiveByUserId(
         user.id,
         tx,
       );
 
-      await this.authPasswordResetOtpRepository.create(
+      return this.authPasswordResetOtpRepository.create(
         {
           userId: user.id,
           email: userEmail,
@@ -67,7 +67,9 @@ export class RequestPasswordResetService {
     });
 
     try {
-      await this.authMailerService.sendPasswordResetMail({
+      await this.passwordResetMailQueue.enqueue({
+        passwordResetRequestId: resetRequest.id,
+        userId: user.id,
         to: userEmail,
         name: user.firstName,
         subject: mailContent.subject,
